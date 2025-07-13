@@ -1,0 +1,41 @@
+# Build
+bin/
+obj/
+*.dll
+*.exe
+
+# IDE / Rider / VS
+.idea/
+.vs/
+*.user
+*.suo
+
+# NuGet
+*.nupkg
+*.snupkg
+project.assets.json
+project.nuget.cache
+project.packagespec.json
+
+# Logs
+*.log
+
+# User secrets
+secrets.json
+
+# Configs
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.json
+
+# OS
+.DS_Store
+
+# Misc
+*.vspscc
+*.vssscc
+*.dbmdl
+*.bak
+*.orig
+
+

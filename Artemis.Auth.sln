@@ -2,6 +2,12 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Artemis.Auth.Api", "Artemis.Auth.Api\Artemis.Auth.Api.csproj", "{9EB6FF8D-B313-40AA-9883-9FF31A689F14}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Artemis.Auth.Application", "Artemis.Auth.Application\Artemis.Auth.Application.csproj", "{D9FE17F2-8E92-4FF9-A9E5-B62158D78D5B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Artemis.Auth.Domain", "Artemis.Auth.Domain\Artemis.Auth.Domain.csproj", "{96B558B7-D15E-4B26-91A4-E21856540393}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Artemis.Auth.Infrastructure", "Artemis.Auth.Infrastructure\Artemis.Auth.Infrastructure.csproj", "{1B7B0122-E176-4B03-A683-0E6D83296C74}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +18,17 @@ Global
 		{9EB6FF8D-B313-40AA-9883-9FF31A689F14}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9EB6FF8D-B313-40AA-9883-9FF31A689F14}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9EB6FF8D-B313-40AA-9883-9FF31A689F14}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9FE17F2-8E92-4FF9-A9E5-B62158D78D5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9FE17F2-8E92-4FF9-A9E5-B62158D78D5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9FE17F2-8E92-4FF9-A9E5-B62158D78D5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9FE17F2-8E92-4FF9-A9E5-B62158D78D5B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{96B558B7-D15E-4B26-91A4-E21856540393}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{96B558B7-D15E-4B26-91A4-E21856540393}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{96B558B7-D15E-4B26-91A4-E21856540393}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{96B558B7-D15E-4B26-91A4-E21856540393}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B7B0122-E176-4B03-A683-0E6D83296C74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B7B0122-E176-4B03-A683-0E6D83296C74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B7B0122-E176-4B03-A683-0E6D83296C74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B7B0122-E176-4B03-A683-0E6D83296C74}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
