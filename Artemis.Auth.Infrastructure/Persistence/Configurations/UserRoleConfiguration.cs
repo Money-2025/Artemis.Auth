@@ -1,16 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Artemis.Auth.Domain.Entities;
+using Artemis.Auth.Infrastructure.Common;
 
 namespace Artemis.Auth.Infrastructure.Persistence.Configurations;
 
-public class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
+public class UserRoleConfiguration : BaseEntityConfiguration<UserRole>
 {
-    public void Configure(EntityTypeBuilder<UserRole> builder)
+    public UserRoleConfiguration(DatabaseConfiguration databaseConfiguration) : base(databaseConfiguration)
     {
-        builder.ToTable("user_roles");
+    }
+    
+    public override void Configure(EntityTypeBuilder<UserRole> builder)
+    {
+        // Apply base configuration first
+        base.Configure(builder);
         
-        builder.HasKey(ur => ur.Id);
+        builder.ToTable("user_roles");
         
         builder.Property(ur => ur.UserId)
             .IsRequired();
@@ -19,22 +25,18 @@ public class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
             .IsRequired();
             
         builder.Property(ur => ur.AssignedAt)
-            .HasDefaultValueSql("now()");
-            
-        builder.Property(ur => ur.IsDeleted)
-            .HasDefaultValue(false);
-            
-        builder.Property(ur => ur.RowVersion)
-            .IsRequired()
-            .HasDefaultValue(1);
+            .HasDefaultValueSql(GetCurrentTimestampSql());
 
-        // Indexes
+        // UserRole-specific indexes
         builder.HasIndex(ur => new { ur.UserId, ur.RoleId })
             .IsUnique()
-            .HasFilter("\"is_deleted\" = false");
+            .HasFilter(GetUniqueFilterSql("is_deleted"))
+            .HasDatabaseName("IX_user_roles_UserId_RoleId");
             
-        builder.HasIndex(ur => ur.UserId);
-        builder.HasIndex(ur => ur.RoleId);
+        builder.HasIndex(ur => ur.UserId)
+            .HasDatabaseName("IX_user_roles_UserId");
+        builder.HasIndex(ur => ur.RoleId)
+            .HasDatabaseName("IX_user_roles_RoleId");
 
         // Relationships are already defined in User and Role configurations
     }

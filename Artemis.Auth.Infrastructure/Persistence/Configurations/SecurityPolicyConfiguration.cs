@@ -2,16 +2,22 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Artemis.Auth.Domain.Entities;
 using Artemis.Auth.Domain.Enums;
+using Artemis.Auth.Infrastructure.Common;
 
 namespace Artemis.Auth.Infrastructure.Persistence.Configurations;
 
-public class SecurityPolicyConfiguration : IEntityTypeConfiguration<SecurityPolicy>
+public class SecurityPolicyConfiguration : BaseEntityConfiguration<SecurityPolicy>
 {
-    public void Configure(EntityTypeBuilder<SecurityPolicy> builder)
+    public SecurityPolicyConfiguration(DatabaseConfiguration databaseConfiguration) : base(databaseConfiguration)
     {
-        builder.ToTable("security_policies");
+    }
+    
+    public override void Configure(EntityTypeBuilder<SecurityPolicy> builder)
+    {
+        // Apply base configuration first
+        base.Configure(builder);
         
-        builder.HasKey(sp => sp.Id);
+        builder.ToTable("security_policies");
         
         builder.Property(sp => sp.PolicyType)
             .IsRequired()
@@ -30,15 +36,5 @@ public class SecurityPolicyConfiguration : IEntityTypeConfiguration<SecurityPoli
             
         builder.Property(sp => sp.IsActive)
             .HasDefaultValue(true);
-            
-        builder.Property(sp => sp.IsDeleted)
-            .HasDefaultValue(false);
-            
-        builder.Property(sp => sp.CreatedAt)
-            .HasDefaultValueSql("now()");
-            
-        builder.Property(sp => sp.RowVersion)
-            .IsRequired()
-            .HasDefaultValue(1);
     }
 }

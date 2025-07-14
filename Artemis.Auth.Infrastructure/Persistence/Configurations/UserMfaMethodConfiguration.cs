@@ -2,16 +2,22 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Artemis.Auth.Domain.Entities;
 using Artemis.Auth.Domain.Enums;
+using Artemis.Auth.Infrastructure.Common;
 
 namespace Artemis.Auth.Infrastructure.Persistence.Configurations;
 
-public class UserMfaMethodConfiguration : IEntityTypeConfiguration<UserMfaMethod>
+public class UserMfaMethodConfiguration : BaseEntityConfiguration<UserMfaMethod>
 {
-    public void Configure(EntityTypeBuilder<UserMfaMethod> builder)
+    public UserMfaMethodConfiguration(DatabaseConfiguration databaseConfiguration) : base(databaseConfiguration)
     {
-        builder.ToTable("user_mfa_methods");
+    }
+    
+    public override void Configure(EntityTypeBuilder<UserMfaMethod> builder)
+    {
+        // Apply base configuration first
+        base.Configure(builder);
         
-        builder.HasKey(umfa => umfa.Id);
+        builder.ToTable("user_mfa_methods");
         
         builder.Property(umfa => umfa.UserId)
             .IsRequired();
@@ -25,19 +31,10 @@ public class UserMfaMethodConfiguration : IEntityTypeConfiguration<UserMfaMethod
             
         builder.Property(umfa => umfa.IsEnabled)
             .HasDefaultValue(false);
-            
-        builder.Property(umfa => umfa.IsDeleted)
-            .HasDefaultValue(false);
-            
-        builder.Property(umfa => umfa.CreatedAt)
-            .HasDefaultValueSql("now()");
-            
-        builder.Property(umfa => umfa.RowVersion)
-            .IsRequired()
-            .HasDefaultValue(1);
 
-        // Indexes
-        builder.HasIndex(umfa => umfa.UserId);
+        // UserMfaMethod-specific indexes
+        builder.HasIndex(umfa => umfa.UserId)
+            .HasDatabaseName("IX_user_mfa_methods_UserId");
 
         // Relationships are already defined in User configuration
     }

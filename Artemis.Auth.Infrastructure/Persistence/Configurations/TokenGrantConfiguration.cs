@@ -2,16 +2,22 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Artemis.Auth.Domain.Entities;
 using Artemis.Auth.Domain.Enums;
+using Artemis.Auth.Infrastructure.Common;
 
 namespace Artemis.Auth.Infrastructure.Persistence.Configurations;
 
-public class TokenGrantConfiguration : IEntityTypeConfiguration<TokenGrant>
+public class TokenGrantConfiguration : BaseEntityConfiguration<TokenGrant>
 {
-    public void Configure(EntityTypeBuilder<TokenGrant> builder)
+    public TokenGrantConfiguration(DatabaseConfiguration databaseConfiguration) : base(databaseConfiguration)
     {
-        builder.ToTable("token_grants");
+    }
+    
+    public override void Configure(EntityTypeBuilder<TokenGrant> builder)
+    {
+        // Apply base configuration first
+        base.Configure(builder);
         
-        builder.HasKey(tg => tg.Id);
+        builder.ToTable("token_grants");
         
         builder.Property(tg => tg.UserId)
             .IsRequired();
@@ -29,24 +35,17 @@ public class TokenGrantConfiguration : IEntityTypeConfiguration<TokenGrant>
             
         builder.Property(tg => tg.IsUsed)
             .HasDefaultValue(false);
-            
-        builder.Property(tg => tg.IsDeleted)
-            .HasDefaultValue(false);
-            
-        builder.Property(tg => tg.CreatedAt)
-            .HasDefaultValueSql("now()");
-            
-        builder.Property(tg => tg.RowVersion)
-            .IsRequired()
-            .HasDefaultValue(1);
 
-        // Indexes
+        // TokenGrant-specific indexes
         builder.HasIndex(tg => tg.TokenHash)
             .IsUnique()
-            .HasFilter("\"is_deleted\" = false AND \"expires_at\" >= now()");
+            .HasFilter(GetUniqueFilterSql("is_deleted") + " AND " + QuoteColumn("expires_at") + " >= " + GetCurrentTimestampSql())
+            .HasDatabaseName("IX_token_grants_TokenHash");
             
-        builder.HasIndex(tg => tg.ExpiresAt);
-        builder.HasIndex(tg => tg.UserId);
+        builder.HasIndex(tg => tg.ExpiresAt)
+            .HasDatabaseName("IX_token_grants_ExpiresAt");
+        builder.HasIndex(tg => tg.UserId)
+            .HasDatabaseName("IX_token_grants_UserId");
 
         // Relationships are already defined in User configuration
     }

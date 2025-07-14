@@ -1,16 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Artemis.Auth.Domain.Entities;
+using Artemis.Auth.Infrastructure.Common;
 
 namespace Artemis.Auth.Infrastructure.Persistence.Configurations;
 
-public class RoleConfiguration : IEntityTypeConfiguration<Role>
+public class RoleConfiguration : BaseEntityConfiguration<Role>
 {
-    public void Configure(EntityTypeBuilder<Role> builder)
+    public RoleConfiguration(DatabaseConfiguration databaseConfiguration) : base(databaseConfiguration)
     {
-        builder.ToTable("roles");
+    }
+    
+    public override void Configure(EntityTypeBuilder<Role> builder)
+    {
+        // Apply base configuration first
+        base.Configure(builder);
         
-        builder.HasKey(r => r.Id);
+        builder.ToTable("roles");
         
         builder.Property(r => r.Name)
             .IsRequired()
@@ -22,23 +28,12 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
             
         builder.Property(r => r.Description)
             .HasColumnType("text");
-            
-        builder.Property(r => r.IsDeleted)
-            .HasDefaultValue(false);
-            
-        builder.Property(r => r.CreatedAt)
-            .HasDefaultValueSql("now()");
-            
-        builder.Property(r => r.RowVersion)
-            .IsRequired()
-            .HasDefaultValue(1);
 
-        // Indexes
+        // Role-specific indexes
         builder.HasIndex(r => r.NormalizedName)
             .IsUnique()
-            .HasFilter("\"is_deleted\" = false");
-            
-        builder.HasIndex(r => r.IsDeleted);
+            .HasFilter(GetUniqueFilterSql("is_deleted"))
+            .HasDatabaseName("IX_roles_NormalizedName");
 
         // Relationships
         builder.HasMany(r => r.UserRoles)

@@ -1,16 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Artemis.Auth.Domain.Entities;
+using Artemis.Auth.Infrastructure.Common;
 
 namespace Artemis.Auth.Infrastructure.Persistence.Configurations;
 
-public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermission>
+public class RolePermissionConfiguration : BaseEntityConfiguration<RolePermission>
 {
-    public void Configure(EntityTypeBuilder<RolePermission> builder)
+    public RolePermissionConfiguration(DatabaseConfiguration databaseConfiguration) : base(databaseConfiguration)
     {
-        builder.ToTable("role_permissions");
+    }
+    
+    public override void Configure(EntityTypeBuilder<RolePermission> builder)
+    {
+        // Apply base configuration first
+        base.Configure(builder);
         
-        builder.HasKey(rp => rp.Id);
+        builder.ToTable("role_permissions");
         
         builder.Property(rp => rp.RoleId)
             .IsRequired();
@@ -18,23 +24,15 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
         builder.Property(rp => rp.Permission)
             .IsRequired()
             .HasMaxLength(256);
-            
-        builder.Property(rp => rp.IsDeleted)
-            .HasDefaultValue(false);
-            
-        builder.Property(rp => rp.CreatedAt)
-            .HasDefaultValueSql("now()");
-            
-        builder.Property(rp => rp.RowVersion)
-            .IsRequired()
-            .HasDefaultValue(1);
 
-        // Indexes
+        // RolePermission-specific indexes
         builder.HasIndex(rp => new { rp.RoleId, rp.Permission })
             .IsUnique()
-            .HasFilter("\"is_deleted\" = false");
+            .HasFilter(GetUniqueFilterSql("is_deleted"))
+            .HasDatabaseName("IX_role_permissions_RoleId_Permission");
             
-        builder.HasIndex(rp => rp.RoleId);
+        builder.HasIndex(rp => rp.RoleId)
+            .HasDatabaseName("IX_role_permissions_RoleId");
 
         // Relationships are already defined in Role configuration
     }

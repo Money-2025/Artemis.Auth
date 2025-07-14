@@ -1,16 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Artemis.Auth.Domain.Entities;
+using Artemis.Auth.Infrastructure.Common;
 
 namespace Artemis.Auth.Infrastructure.Persistence.Configurations;
 
-public class DeviceTrustConfiguration : IEntityTypeConfiguration<DeviceTrust>
+public class DeviceTrustConfiguration : BaseEntityConfiguration<DeviceTrust>
 {
-    public void Configure(EntityTypeBuilder<DeviceTrust> builder)
+    public DeviceTrustConfiguration(DatabaseConfiguration databaseConfiguration) : base(databaseConfiguration)
     {
-        builder.ToTable("device_trusts");
+    }
+    
+    public override void Configure(EntityTypeBuilder<DeviceTrust> builder)
+    {
+        // Apply base configuration first
+        base.Configure(builder);
         
-        builder.HasKey(dt => dt.Id);
+        builder.ToTable("device_trusts");
         
         builder.Property(dt => dt.UserId)
             .IsRequired();
@@ -19,21 +25,16 @@ public class DeviceTrustConfiguration : IEntityTypeConfiguration<DeviceTrust>
             .HasMaxLength(256);
             
         builder.Property(dt => dt.TrustedAt)
-            .HasDefaultValueSql("now()");
+            .HasDefaultValueSql(GetCurrentTimestampSql());
             
         builder.Property(dt => dt.IsRevoked)
             .HasDefaultValue(false);
-            
-        builder.Property(dt => dt.IsDeleted)
-            .HasDefaultValue(false);
-            
-        builder.Property(dt => dt.RowVersion)
-            .IsRequired()
-            .HasDefaultValue(1);
 
-        // Indexes
-        builder.HasIndex(dt => dt.UserId);
-        builder.HasIndex(dt => dt.DeviceName);
+        // DeviceTrust-specific indexes
+        builder.HasIndex(dt => dt.UserId)
+            .HasDatabaseName("IX_device_trusts_UserId");
+        builder.HasIndex(dt => dt.DeviceName)
+            .HasDatabaseName("IX_device_trusts_DeviceName");
 
         // Relationships are already defined in User configuration
     }

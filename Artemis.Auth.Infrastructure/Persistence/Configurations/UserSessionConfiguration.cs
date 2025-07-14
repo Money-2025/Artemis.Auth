@@ -1,16 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Artemis.Auth.Domain.Entities;
+using Artemis.Auth.Infrastructure.Common;
 
 namespace Artemis.Auth.Infrastructure.Persistence.Configurations;
 
-public class UserSessionConfiguration : IEntityTypeConfiguration<UserSession>
+public class UserSessionConfiguration : BaseEntityConfiguration<UserSession>
 {
-    public void Configure(EntityTypeBuilder<UserSession> builder)
+    public UserSessionConfiguration(DatabaseConfiguration databaseConfiguration) : base(databaseConfiguration)
     {
-        builder.ToTable("user_sessions");
+    }
+    
+    public override void Configure(EntityTypeBuilder<UserSession> builder)
+    {
+        // Apply base configuration first
+        base.Configure(builder);
         
-        builder.HasKey(us => us.Id);
+        builder.ToTable("user_sessions");
         
         builder.Property(us => us.UserId)
             .IsRequired();
@@ -36,24 +42,17 @@ public class UserSessionConfiguration : IEntityTypeConfiguration<UserSession>
             
         builder.Property(us => us.IsRevoked)
             .HasDefaultValue(false);
-            
-        builder.Property(us => us.IsDeleted)
-            .HasDefaultValue(false);
-            
-        builder.Property(us => us.CreatedAt)
-            .HasDefaultValueSql("now()");
-            
-        builder.Property(us => us.RowVersion)
-            .IsRequired()
-            .HasDefaultValue(1);
 
-        // Indexes
+        // UserSession-specific indexes
         builder.HasIndex(us => us.SessionTokenHash)
             .IsUnique()
-            .HasFilter("\"is_deleted\" = false AND \"expires_at\" >= now()");
+            .HasFilter(GetUniqueFilterSql("is_deleted") + " AND " + QuoteColumn("expires_at") + " >= " + GetCurrentTimestampSql())
+            .HasDatabaseName("IX_user_sessions_SessionTokenHash");
             
-        builder.HasIndex(us => us.ExpiresAt);
-        builder.HasIndex(us => us.UserId);
+        builder.HasIndex(us => us.ExpiresAt)
+            .HasDatabaseName("IX_user_sessions_ExpiresAt");
+        builder.HasIndex(us => us.UserId)
+            .HasDatabaseName("IX_user_sessions_UserId");
 
         // Relationships are already defined in User configuration
     }

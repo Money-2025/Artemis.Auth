@@ -1,17 +1,25 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Artemis.Auth.Domain.Entities;
+using Artemis.Auth.Infrastructure.Common;
+using Artemis.Auth.Infrastructure.Performance;
 
 namespace Artemis.Auth.Infrastructure.Persistence.Configurations;
 
-public class UserConfiguration : IEntityTypeConfiguration<User>
+public class UserConfiguration : BaseEntityConfiguration<User>
 {
-    public void Configure(EntityTypeBuilder<User> builder)
+    public UserConfiguration(DatabaseConfiguration databaseConfiguration) : base(databaseConfiguration)
     {
+    }
+    
+    public override void Configure(EntityTypeBuilder<User> builder)
+    {
+        // Apply base configuration first
+        base.Configure(builder);
+        
         builder.ToTable("users");
         
-        builder.HasKey(u => u.Id);
-        
+        // User-specific properties
         builder.Property(u => u.Username)
             .IsRequired()
             .HasMaxLength(256);
@@ -47,68 +55,70 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.TwoFactorEnabled)
             .HasDefaultValue(false);
             
-        builder.Property(u => u.IsDeleted)
-            .HasDefaultValue(false);
-            
         builder.Property(u => u.FailedLoginCount)
             .HasDefaultValue(0);
-            
-        builder.Property(u => u.CreatedAt)
-            .HasDefaultValueSql("now()");
-            
-        builder.Property(u => u.RowVersion)
-            .IsRequired()
-            .HasDefaultValue(1);
 
-        // Indexes
+        // User-specific indexes
         builder.HasIndex(u => u.NormalizedUsername)
             .IsUnique()
-            .HasFilter("\"is_deleted\" = false");
+            .HasFilter(GetUniqueFilterSql("is_deleted"))
+            .HasDatabaseName("IX_users_NormalizedUsername");
             
         builder.HasIndex(u => u.NormalizedEmail)
             .IsUnique()
-            .HasFilter("\"is_deleted\" = false");
+            .HasFilter(GetUniqueFilterSql("is_deleted"))
+            .HasDatabaseName("IX_users_NormalizedEmail");
             
         builder.HasIndex(u => u.PhoneNumber)
             .IsUnique()
-            .HasFilter("\"phone_number_confirmed\" = true AND \"is_deleted\" = false");
+            .HasFilter(GetBooleanFilterSql("phone_number_confirmed", true) + " AND " + GetBooleanFilterSql("is_deleted", false))
+            .HasDatabaseName("IX_users_PhoneNumber");
             
-        builder.HasIndex(u => u.IsDeleted);
+        builder.HasIndex(u => u.LastLoginAt)
+            .HasDatabaseName("IX_users_LastLoginAt");
+            
+        builder.HasIndex(u => u.LockoutEnd)
+            .HasDatabaseName("IX_users_LockoutEnd");
 
-        // Relationships
+        // Add performance optimizations
+        builder.AddOptimizedIndexes(_databaseProvider);
+        builder.AddCompositeIndexes(_databaseProvider);
+        builder.AddCoveringIndexes(_databaseProvider);
+
+        // Relationships with optimized delete behavior
         builder.HasMany(u => u.UserRoles)
             .WithOne(ur => ur.User)
             .HasForeignKey(ur => ur.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehaviorStrategy.Junction);
             
         builder.HasMany(u => u.UserMfaMethods)
             .WithOne(umfa => umfa.User)
             .HasForeignKey(umfa => umfa.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehaviorStrategy.SecuritySensitive);
             
         builder.HasMany(u => u.TokenGrants)
             .WithOne(tg => tg.User)
             .HasForeignKey(tg => tg.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehaviorStrategy.SecuritySensitive);
             
         builder.HasMany(u => u.AuditLogs)
             .WithOne(al => al.User)
             .HasForeignKey(al => al.PerformedBy)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehaviorStrategy.AuditData);
             
         builder.HasMany(u => u.UserSessions)
             .WithOne(us => us.User)
             .HasForeignKey(us => us.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehaviorStrategy.SessionData);
             
         builder.HasMany(u => u.PasswordHistories)
             .WithOne(ph => ph.User)
             .HasForeignKey(ph => ph.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehaviorStrategy.AuditData);
             
         builder.HasMany(u => u.DeviceTrusts)
             .WithOne(dt => dt.User)
             .HasForeignKey(dt => dt.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehaviorStrategy.SecuritySensitive);
     }
 }

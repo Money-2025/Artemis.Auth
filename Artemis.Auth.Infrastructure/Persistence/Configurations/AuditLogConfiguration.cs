@@ -2,16 +2,22 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Artemis.Auth.Domain.Entities;
 using Artemis.Auth.Domain.Enums;
+using Artemis.Auth.Infrastructure.Common;
 
 namespace Artemis.Auth.Infrastructure.Persistence.Configurations;
 
-public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
+public class AuditLogConfiguration : BaseEntityConfiguration<AuditLog>
 {
-    public void Configure(EntityTypeBuilder<AuditLog> builder)
+    public AuditLogConfiguration(DatabaseConfiguration databaseConfiguration) : base(databaseConfiguration)
     {
-        builder.ToTable("audit_logs");
+    }
+    
+    public override void Configure(EntityTypeBuilder<AuditLog> builder)
+    {
+        // Apply base configuration first
+        base.Configure(builder);
         
-        builder.HasKey(al => al.Id);
+        builder.ToTable("audit_logs");
         
         builder.Property(al => al.TableName)
             .IsRequired()
@@ -31,18 +37,13 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
             .HasColumnType("jsonb");
             
         builder.Property(al => al.PerformedAt)
-            .HasDefaultValueSql("now()");
-            
-        builder.Property(al => al.IsDeleted)
-            .HasDefaultValue(false);
-            
-        builder.Property(al => al.RowVersion)
-            .IsRequired()
-            .HasDefaultValue(1);
+            .HasDefaultValueSql(GetCurrentTimestampSql());
 
-        // Indexes
-        builder.HasIndex(al => new { al.TableName, al.Action });
-        builder.HasIndex(al => al.PerformedAt);
+        // AuditLog-specific indexes
+        builder.HasIndex(al => new { al.TableName, al.Action })
+            .HasDatabaseName("IX_audit_logs_TableName_Action");
+        builder.HasIndex(al => al.PerformedAt)
+            .HasDatabaseName("IX_audit_logs_PerformedAt");
 
         // Relationships are already defined in User configuration
     }
