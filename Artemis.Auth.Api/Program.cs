@@ -1,11 +1,9 @@
-using Microsoft.EntityFrameworkCore;
-using Artemis.Auth.Infrastructure.Persistence;
+using Artemis.Auth.Infrastructure.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Entity Framework Core with PostgreSQL
-builder.Services.AddDbContext<AuthDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Add Infrastructure services
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
