@@ -1,13 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Artemis.Auth.Domain.Entities;
 using Artemis.Auth.Infrastructure.Persistence.Configurations;
+using Artemis.Auth.Infrastructure.Common;
 
 namespace Artemis.Auth.Infrastructure.Persistence;
 
 public class AuthDbContext : DbContext
 {
-    public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options)
+    private readonly DatabaseConfiguration _databaseConfiguration;
+    
+    public AuthDbContext(DbContextOptions<AuthDbContext> options, DatabaseConfiguration databaseConfig) : base(options)
     {
+        _databaseConfiguration = databaseConfig;
     }
 
     public DbSet<User> Users { get; set; }
@@ -26,16 +30,16 @@ public class AuthDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.ApplyConfiguration(new UserConfiguration());
-        modelBuilder.ApplyConfiguration(new RoleConfiguration());
-        modelBuilder.ApplyConfiguration(new UserRoleConfiguration());
-        modelBuilder.ApplyConfiguration(new UserMfaMethodConfiguration());
-        modelBuilder.ApplyConfiguration(new TokenGrantConfiguration());
-        modelBuilder.ApplyConfiguration(new AuditLogConfiguration());
-        modelBuilder.ApplyConfiguration(new UserSessionConfiguration());
-        modelBuilder.ApplyConfiguration(new SecurityPolicyConfiguration());
-        modelBuilder.ApplyConfiguration(new PasswordHistoryConfiguration());
-        modelBuilder.ApplyConfiguration(new RolePermissionConfiguration());
-        modelBuilder.ApplyConfiguration(new DeviceTrustConfiguration());
+        modelBuilder.ApplyConfiguration(new UserConfiguration(_databaseConfiguration));
+        modelBuilder.ApplyConfiguration(new RoleConfiguration(_databaseConfiguration));
+        modelBuilder.ApplyConfiguration(new UserRoleConfiguration(_databaseConfiguration));
+        modelBuilder.ApplyConfiguration(new UserMfaMethodConfiguration(_databaseConfiguration));
+        modelBuilder.ApplyConfiguration(new TokenGrantConfiguration(_databaseConfiguration));
+        modelBuilder.ApplyConfiguration(new AuditLogConfiguration(_databaseConfiguration));
+        modelBuilder.ApplyConfiguration(new UserSessionConfiguration(_databaseConfiguration));
+        modelBuilder.ApplyConfiguration(new SecurityPolicyConfiguration(_databaseConfiguration));
+        modelBuilder.ApplyConfiguration(new PasswordHistoryConfiguration(_databaseConfiguration));
+        modelBuilder.ApplyConfiguration(new RolePermissionConfiguration(_databaseConfiguration));
+        modelBuilder.ApplyConfiguration(new DeviceTrustConfiguration(_databaseConfiguration));
     }
 }
