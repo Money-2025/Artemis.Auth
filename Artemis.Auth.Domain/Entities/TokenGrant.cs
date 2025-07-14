@@ -10,8 +10,8 @@ public class TokenGrant : AuditableEntity
     public TokenType TokenType { get; set; }
     public string TokenHash { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
-    public bool IsUsed { get; set; } = false;
+    public bool IsUsed { get; set; }
     
     // Many-to-one relationship
-    public virtual User User { get; set; }
+    public virtual User User { get; set; } = null!;
 }

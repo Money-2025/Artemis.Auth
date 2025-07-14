@@ -6,5 +6,5 @@ public class RolePermission : AuditableEntity
     
     // Many-to-one relationship
     public Guid RoleId { get; set; }
-    public virtual Role Role { get; set; }
+    public virtual Role Role { get; set; } = null!;
 }

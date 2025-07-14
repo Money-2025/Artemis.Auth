@@ -9,7 +9,7 @@ public class UserMfaMethod : AuditableEntity
     
     public MfaMethodType Type { get; set; }
     public string? SecretKey { get; set; }
-    public bool IsEnabled { get; set; } = false;
+    public bool IsEnabled { get; set; }
     
-    public virtual User User { get; set; }
+    public virtual User User { get; set; } = null!;
 }

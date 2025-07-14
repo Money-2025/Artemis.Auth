@@ -9,11 +9,11 @@ public class UserSession : AuditableEntity
     public string? UserAgent { get; set; }
     public string? CountryCode { get; set; }
     public string? DeviceFingerprint { get; set; }
-    public bool IsRevoked { get; set; } = false;
+    public bool IsRevoked { get; set; }
     public DateTime? RevokedAt { get; set; }
     public Guid? RevokedBy { get; set; }
     
     // Many-to-one relationship
     public Guid UserId { get; set; }
-    public virtual User User { get; set; }
+    public virtual User User { get; set; } = null!;
 }
