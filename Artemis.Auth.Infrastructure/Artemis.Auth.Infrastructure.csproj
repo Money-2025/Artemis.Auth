@@ -22,6 +22,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Artemis.Auth.Domain\Artemis.Auth.Domain.csproj" />
+      <ProjectReference Include="..\Artemis.Auth.Application\Artemis.Auth.Application.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Artemis.Auth.Application.Contracts.Persistence;
 using Artemis.Auth.Infrastructure.Common;
 using Artemis.Auth.Infrastructure.Persistence;
+using Artemis.Auth.Infrastructure.Persistence.Repositories;
 using Artemis.Auth.Infrastructure.Services;
 using Artemis.Auth.Infrastructure.Security;
 using Artemis.Auth.Infrastructure.Performance;
@@ -42,6 +44,11 @@ public static class ServiceCollectionExtensions
             // Add interceptors
             options.AddInterceptors(auditInterceptor, securityInterceptor, queryInterceptor);
         });
+        
+        // Repository implementations
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         
         // Infrastructure services
         services.AddScoped<SoftDeleteService>();
