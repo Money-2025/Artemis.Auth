@@ -1,6 +1,6 @@
 using MediatR;
-using Artemis.Auth.Application.DTOs;
-using Artemis.Auth.Application.Common.Wrappers;
+using Artemis.Auth.Application.Common.Models;
+using Artemis.Auth.Application.Features.Users.Commands.UpdateUserProfile;
 
 namespace Artemis.Auth.Application.Features.Users.Queries.GetUserProfile;
 
