@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Artemis.Auth.Application.Contracts.Infrastructure;
 using Artemis.Auth.Application.Contracts.Persistence;
 using Artemis.Auth.Infrastructure.Common;
 using Artemis.Auth.Infrastructure.Persistence;
@@ -22,6 +23,11 @@ public static class ServiceCollectionExtensions
         // Security configuration
         var securityConfig = configuration.GetSection("Security").Get<SecurityConfiguration>() ?? new SecurityConfiguration();
         services.AddSingleton(securityConfig);
+        
+        // JWT configuration
+        var jwtConfig = configuration.GetSection("Jwt").Get<JwtConfiguration>() ?? new JwtConfiguration();
+        services.Configure<JwtConfiguration>(configuration.GetSection("Jwt"));
+        services.AddSingleton(jwtConfig);
         
         // Add HttpContextAccessor for audit interceptor
         services.AddHttpContextAccessor();
@@ -49,6 +55,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        
+        // JWT and security services
+        services.AddSingleton<TokenBlacklistService>();
+        services.AddScoped<IJwtGenerator, JwtService>();
         
         // Infrastructure services
         services.AddScoped<SoftDeleteService>();
