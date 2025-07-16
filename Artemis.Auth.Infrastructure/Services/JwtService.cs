@@ -510,6 +510,87 @@ public class JwtService : IJwtGenerator
     }
 
     /// <summary>
+    /// Generates JWT access token with user claims and roles (simplified version)
+    /// </summary>
+    public async Task<string> GenerateTokenAsync(User user, IList<string> roles)
+    {
+        return await GenerateAccessTokenAsync(user, roles, new List<string>());
+    }
+
+    /// <summary>
+    /// Generates refresh token for a specific user ID
+    /// </summary>
+    public async Task<string> GenerateRefreshTokenAsync(Guid userId)
+    {
+        // In a real implementation, you would fetch the user from database
+        // For now, create a minimal user object
+        var user = new User { Id = userId, SecurityStamp = Guid.NewGuid().ToString() };
+        return await GenerateRefreshTokenAsync(user);
+    }
+
+    /// <summary>
+    /// Validates refresh token for a specific user
+    /// </summary>
+    public async Task<bool> ValidateRefreshTokenAsync(string refreshToken, Guid userId)
+    {
+        try
+        {
+            // First validate the token structure
+            if (!await ValidateTokenAsync(refreshToken, "refresh"))
+                return false;
+
+            // Extract user ID from token and verify it matches
+            var tokenUserId = await GetUserIdFromTokenAsync(refreshToken);
+            return tokenUserId == userId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating refresh token for user {UserId}", userId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Revokes a specific refresh token for a user
+    /// </summary>
+    public async Task RevokeRefreshTokenAsync(string refreshToken, Guid userId)
+    {
+        try
+        {
+            // Validate that the refresh token belongs to the user
+            if (!await ValidateRefreshTokenAsync(refreshToken, userId))
+                throw new InvalidOperationException("Invalid refresh token for user");
+
+            // Add to blacklist
+            await RevokeTokenAsync(refreshToken);
+
+            _logger.LogDebug("Refresh token revoked for user {UserId}", userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error revoking refresh token for user {UserId}", userId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Revokes all refresh tokens for a specific user
+    /// </summary>
+    public async Task RevokeAllRefreshTokensAsync(Guid userId)
+    {
+        // This is handled by the general RevokeAllUserTokensAsync method
+        await RevokeAllUserTokensAsync(userId);
+    }
+
+    /// <summary>
+    /// Adds a token to the blacklist
+    /// </summary>
+    public async Task BlacklistTokenAsync(string accessToken)
+    {
+        await RevokeTokenAsync(accessToken);
+    }
+
+    /// <summary>
     /// Creates signing credentials based on configuration
     /// Supports HS256 and RS256 algorithms
     /// </summary>
