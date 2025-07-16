@@ -29,6 +29,11 @@ public static class ServiceCollectionExtensions
         services.Configure<JwtConfiguration>(configuration.GetSection("Jwt"));
         services.AddSingleton(jwtConfig);
         
+        // Email configuration
+        var emailConfig = configuration.GetSection("Email").Get<EmailConfiguration>() ?? new EmailConfiguration();
+        services.Configure<EmailConfiguration>(configuration.GetSection("Email"));
+        services.AddSingleton(emailConfig);
+        
         // Add HttpContextAccessor for audit interceptor
         services.AddHttpContextAccessor();
         
@@ -59,6 +64,12 @@ public static class ServiceCollectionExtensions
         // JWT and security services
         services.AddSingleton<TokenBlacklistService>();
         services.AddScoped<IJwtGenerator, JwtService>();
+        
+        // Email services
+        services.AddSingleton<EmailQueueService>();
+        services.AddScoped<EmailService>();
+        services.AddScoped<IEmailSender, EmailService>();
+        services.AddHostedService<EmailBackgroundService>();
         
         // Infrastructure services
         services.AddScoped<SoftDeleteService>();
