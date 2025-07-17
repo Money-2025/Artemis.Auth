@@ -26,11 +26,12 @@ public class SecurityHeadersMiddleware : IMiddleware
     /// </summary>
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        // Process the request
-        await next(context);
-
+        
         // Add security headers to the response
         AddSecurityHeaders(context);
+        
+        // Process the request
+        await next(context);
     }
 
     /// <summary>

@@ -17,7 +17,18 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         // Database configuration
-        var databaseConfig = configuration.GetSection("Database").Get<DatabaseConfiguration>() ?? new DatabaseConfiguration();
+        var databaseConfig = new DatabaseConfiguration
+        {
+            Provider                  = configuration
+                .GetValue<DatabaseProvider>("Database:Provider"),
+            MaxRetryCount             = configuration
+                .GetValue<int>("Database:MaxRetryCount"),
+            MaxRetryDelay             = configuration
+                .GetValue<TimeSpan>("Database:MaxRetryDelay"),
+            EnableSensitiveDataLogging = configuration
+                .GetValue<bool>("Database:EnableSensitiveDataLogging"),
+            ConnectionString          = configuration.GetConnectionString("AuthDb")!
+        };
         services.AddSingleton(databaseConfig);
         
         // Security configuration
@@ -43,18 +54,35 @@ public static class ServiceCollectionExtensions
         services.AddScoped<QueryOptimizationInterceptor>();
         
         // Database context
-        services.AddDbContext<AuthDbContext>((serviceProvider, options) =>
+        services.AddDbContext<AuthDbContext>((sp, options) =>
         {
-            var config = serviceProvider.GetRequiredService<DatabaseConfiguration>();
-            var auditInterceptor = serviceProvider.GetRequiredService<AuditInterceptor>();
-            var securityInterceptor = serviceProvider.GetRequiredService<SecurityConstraintInterceptor>();
-            var queryInterceptor = serviceProvider.GetRequiredService<QueryOptimizationInterceptor>();
-            
-            ConfigureDatabase(options, config);
-            
-            // Add interceptors
+            var config = sp.GetRequiredService<DatabaseConfiguration>();
+
+            // 1. Connection, retry & custom history table
+            options.UseNpgsql(
+                    config.ConnectionString,
+                    npgsql =>
+                    {
+                        npgsql.EnableRetryOnFailure(
+                            maxRetryCount: config.MaxRetryCount,
+                            maxRetryDelay: config.MaxRetryDelay,
+                            errorCodesToAdd: null
+                        );
+                        // Migrations history tablosunu snake_case ve public schema’da oluştur
+                        npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "public");
+                    }
+                )
+                // 2. Entity’lerinizin ve EF’in kendi tablolarının sütunlarını snake_case’e çevir
+                .UseSnakeCaseNamingConvention();
+
+            // 3. Interceptor’lar
+            var auditInterceptor    = sp.GetRequiredService<AuditInterceptor>();
+            var securityInterceptor = sp.GetRequiredService<SecurityConstraintInterceptor>();
+            var queryInterceptor    = sp.GetRequiredService<QueryOptimizationInterceptor>();
             options.AddInterceptors(auditInterceptor, securityInterceptor, queryInterceptor);
         });
+
+
         
         // Repository implementations
         services.AddScoped<IUserRepository, UserRepository>();
@@ -69,7 +97,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<EmailQueueService>();
         services.AddScoped<EmailService>();
         services.AddScoped<IEmailSender, EmailService>();
-        services.AddHostedService<EmailBackgroundService>();
+        /*services.AddHostedService<EmailBackgroundService>();*/
         
         // Infrastructure services
         services.AddScoped<SoftDeleteService>();

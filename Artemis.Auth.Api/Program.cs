@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using AutoMapper;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +18,7 @@ builder.Services.AddApplication();
 
 // 2. Infrastructure layer services (Database, External Services)
 builder.Services.AddInfrastructure(builder.Configuration);
+
 
 // 3. API layer services
 builder.Services.AddControllers();
@@ -38,8 +38,17 @@ builder.Services.AddCustomRateLimiting();
 // Security Headers
 builder.Services.AddSecurityHeaders(options =>
 {
-    options.ContentSecurityPolicy.Value = 
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+    // Relaxed CSP for development to allow Swagger UI
+    if (builder.Environment.IsDevelopment())
+    {
+        options.ContentSecurityPolicy.Value = 
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: https: blob:; font-src 'self' data: https:; connect-src 'self' https: wss: ws:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
+    }
+    else
+    {
+        options.ContentSecurityPolicy.Value = 
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+    }
 });
 
 // JWT Authentication
@@ -115,10 +124,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Health checks for monitoring
-builder.Services.AddHealthChecks()
-    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy())
-    .AddDbContextCheck<Artemis.Auth.Infrastructure.Persistence.AuthDbContext>();
 
 // Swagger/OpenAPI configuration
 builder.Services.AddEndpointsApiExplorer();
@@ -142,8 +147,13 @@ app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseSecurityHeaders();
 
 // 3. HTTPS redirection and security
-app.UseHsts();
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    // only enforce HSTS + HTTPS in non‑dev
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
 
 // 4. CORS
 app.UseCors("DefaultPolicy");
@@ -166,7 +176,9 @@ if (app.Environment.IsDevelopment())
 }
 
 // 9. Health checks endpoint
-app.MapHealthChecks("/health");
+/*
+app.MapHealthChecks("/health");/*#1#
+*/
 
 // 10. Map controllers
 app.MapControllers();

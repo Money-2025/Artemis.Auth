@@ -1,58 +1,62 @@
+using System;
+using System.Data.Common;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
-using System.Data.Common;
 
-namespace Artemis.Auth.Infrastructure.Performance;
-
-public class QueryOptimizationInterceptor : DbCommandInterceptor
+namespace Artemis.Auth.Infrastructure.Performance
 {
-    private readonly ILogger<QueryOptimizationInterceptor> _logger;
-    
-    public QueryOptimizationInterceptor(ILogger<QueryOptimizationInterceptor> logger)
+    public class QueryOptimizationInterceptor : DbCommandInterceptor
     {
-        _logger = logger;
-    }
-    
-    public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
-        DbCommand command,
-        CommandEventData eventData,
-        InterceptionResult<DbDataReader> result,
-        CancellationToken cancellationToken = default)
-    {
-        // Log slow queries
-        var startTime = DateTime.UtcNow;
-        
-        var executeResult = await base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
-        
-        var executionTime = DateTime.UtcNow - startTime;
-        
-        if (executionTime.TotalMilliseconds > 1000) // Log queries slower than 1 second
+        private readonly ILogger<QueryOptimizationInterceptor> _logger;
+
+        public QueryOptimizationInterceptor(ILogger<QueryOptimizationInterceptor> logger)
         {
-            _logger.LogWarning("Slow query detected: {ExecutionTime}ms - {Query}", 
-                executionTime.TotalMilliseconds, 
-                command.CommandText);
+            _logger = logger;
         }
-        
-        return executeResult;
-    }
-    
-    public override InterceptionResult<DbCommand> CommandCreating(
-        CommandCorrelatedEventData eventData,
-        InterceptionResult<DbCommand> result)
-    {
-        // Add query hints for PostgreSQL
-        if (eventData.Context?.Database.ProviderName?.Contains("Npgsql") == true)
+
+        /// <summary>
+        /// Fires after EF Core has constructed the DbCommand. Here you can tweak timeouts, hints, etc.
+        /// </summary>
+        public override DbCommand CommandCreated(
+            CommandEndEventData eventData,
+            DbCommand command)
         {
-            // Add connection-level optimizations
-            var command = result.Result;
-            if (command != null)
+            if (eventData.Context?.Database.ProviderName?.Contains("Npgsql") == true)
             {
-                // Set statement timeout for long-running queries
+                // Set a 30‑second statement timeout on all PostgreSQL commands
                 command.CommandTimeout = 30;
             }
+
+            return base.CommandCreated(eventData, command);
         }
-        
-        return base.CommandCreating(eventData, result);
+
+        /// <summary>
+        /// Logs any query that takes longer than 1 second to execute.
+        /// </summary>
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            var startTime = DateTime.UtcNow;
+
+            // Proceed with execution
+            var executeResult = await base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+
+            var executionTime = DateTime.UtcNow - startTime;
+            if (executionTime.TotalMilliseconds > 1000)
+            {
+                _logger.LogWarning(
+                    "Slow query detected ({ExecutionTime}ms): {CommandText}",
+                    executionTime.TotalMilliseconds,
+                    command.CommandText);
+            }
+
+            return executeResult;
+        }
     }
 }

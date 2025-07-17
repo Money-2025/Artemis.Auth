@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
+using Swashbuckle.AspNetCore.SwaggerUI;
 
 namespace Artemis.Auth.Api.Configuration;
 
@@ -18,23 +19,7 @@ public static class SwaggerConfiguration
     {
         services.AddSwaggerGen(options =>
         {
-            // Configure Swagger options
-            options.SwaggerDoc("v1", new OpenApiInfo
-            {
-                Version = "v1",
-                Title = "Artemis Authentication API",
-                Description = "A comprehensive authentication and authorization microservice built with ASP.NET Core",
-                Contact = new OpenApiContact
-                {
-                    Name = "Artemis Authentication Team",
-                    Email = "auth@artemis.com"
-                },
-                License = new OpenApiLicense
-                {
-                    Name = "MIT License",
-                    Url = new Uri("https://opensource.org/licenses/MIT")
-                }
-            });
+
 
             // Add JWT Bearer authentication
             options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -87,28 +72,28 @@ public static class SwaggerConfiguration
     /// </summary>
     public static IApplicationBuilder UseSwaggerConfiguration(this IApplicationBuilder app, IApiVersionDescriptionProvider provider)
     {
-        app.UseSwagger(options =>
-        {
-            options.RouteTemplate = "api-docs/{documentName}/swagger.json";
-        });
+        // Use the default JSON endpoint at /swagger/{documentName}/swagger.json
+        app.UseSwagger();  
 
+        // Serve the UI at /swagger/ (the default)
         app.UseSwaggerUI(options =>
         {
-            options.RoutePrefix = "api-docs";
-            options.DocumentTitle = "Artemis Authentication API";
-            
-            // Create a swagger endpoint for each API version
-            foreach (var description in provider.ApiVersionDescriptions)
+            // no RoutePrefix = → UI is at /swagger
+            foreach (var desc in provider.ApiVersionDescriptions)
             {
+                // e.g. /swagger/v1/swagger.json
                 options.SwaggerEndpoint(
-                    $"/api-docs/{description.GroupName}/swagger.json",
-                    $"Artemis Authentication API {description.GroupName.ToUpperInvariant()}");
+                    $"/swagger/{desc.GroupName}/swagger.json",
+                    $"Artemis Authentication API {desc.GroupName.ToUpperInvariant()}"
+                );
             }
 
-            // Customize UI
+            // your UI tweaks:
+            options.RoutePrefix = "swagger";         // optional, since that's the default
+            options.DocumentTitle = "Artemis API";
             options.DefaultModelExpandDepth(2);
-            options.DefaultModelRendering(Swashbuckle.AspNetCore.SwaggerUI.ModelRendering.Model);
-            options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
+            options.DefaultModelRendering(ModelRendering.Model);
+            options.DocExpansion(DocExpansion.None);
             options.EnableDeepLinking();
             options.DisplayOperationId();
             options.DisplayRequestDuration();
@@ -120,6 +105,7 @@ public static class SwaggerConfiguration
 
         return app;
     }
+
 }
 
 /// <summary>
