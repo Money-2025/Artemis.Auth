@@ -31,12 +31,12 @@ public class UserRoleConfiguration : BaseEntityConfiguration<UserRole>
         builder.HasIndex(ur => new { ur.UserId, ur.RoleId })
             .IsUnique()
             .HasFilter(GetUniqueFilterSql("is_deleted"))
-            .HasDatabaseName("IX_user_roles_UserId_RoleId");
+            .HasDatabaseName("ix_user_roles_user_id_role_id");
             
         builder.HasIndex(ur => ur.UserId)
-            .HasDatabaseName("IX_user_roles_UserId");
+            .HasDatabaseName("ix_user_roles_user_id");
         builder.HasIndex(ur => ur.RoleId)
-            .HasDatabaseName("IX_user_roles_RoleId");
+            .HasDatabaseName("ix_user_roles_role_id");
 
         // Relationships are already defined in User and Role configurations
     }

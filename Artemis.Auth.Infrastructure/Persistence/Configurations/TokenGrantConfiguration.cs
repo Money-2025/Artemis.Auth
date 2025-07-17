@@ -24,7 +24,10 @@ public class TokenGrantConfiguration : BaseEntityConfiguration<TokenGrant>
             
         builder.Property(tg => tg.TokenType)
             .IsRequired()
-            .HasConversion<string>();
+            .HasConversion(
+                v => v.ToString().ToLowerInvariant(),
+                v => Enum.Parse<TokenType>(v, true))
+            .HasMaxLength(50);
             
         builder.Property(tg => tg.TokenHash)
             .IsRequired()
@@ -39,13 +42,19 @@ public class TokenGrantConfiguration : BaseEntityConfiguration<TokenGrant>
         // TokenGrant-specific indexes
         builder.HasIndex(tg => tg.TokenHash)
             .IsUnique()
-            .HasFilter(GetUniqueFilterSql("is_deleted") + " AND " + QuoteColumn("expires_at") + " >= " + GetCurrentTimestampSql())
-            .HasDatabaseName("IX_token_grants_TokenHash");
+            .HasFilter(GetUniqueFilterSql("is_deleted"))
+            .HasDatabaseName("ix_token_grants_token_hash");
             
         builder.HasIndex(tg => tg.ExpiresAt)
-            .HasDatabaseName("IX_token_grants_ExpiresAt");
+            .HasDatabaseName("ix_token_grants_expires_at");
+            
         builder.HasIndex(tg => tg.UserId)
-            .HasDatabaseName("IX_token_grants_UserId");
+            .HasDatabaseName("ix_token_grants_user_id");
+            
+        // Composite index for active token lookup
+        builder.HasIndex(tg => new { tg.UserId, tg.TokenType, tg.ExpiresAt })
+            .HasFilter(GetBooleanFilterSql("is_deleted", false) + " AND " + GetBooleanFilterSql("is_used", false))
+            .HasDatabaseName("ix_token_grants_active_lookup");
 
         // Relationships are already defined in User configuration
     }

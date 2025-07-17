@@ -46,13 +46,18 @@ public class UserSessionConfiguration : BaseEntityConfiguration<UserSession>
         // UserSession-specific indexes
         builder.HasIndex(us => us.SessionTokenHash)
             .IsUnique()
-            .HasFilter(GetUniqueFilterSql("is_deleted") + " AND " + QuoteColumn("expires_at") + " >= " + GetCurrentTimestampSql())
-            .HasDatabaseName("IX_user_sessions_SessionTokenHash");
+            .HasFilter(GetUniqueFilterSql("is_deleted"))
+            .HasDatabaseName("ix_user_sessions_session_token_hash");
             
         builder.HasIndex(us => us.ExpiresAt)
-            .HasDatabaseName("IX_user_sessions_ExpiresAt");
+            .HasDatabaseName("ix_user_sessions_expires_at");
         builder.HasIndex(us => us.UserId)
-            .HasDatabaseName("IX_user_sessions_UserId");
+            .HasDatabaseName("ix_user_sessions_user_id");
+            
+        // Composite index for active session lookup
+        builder.HasIndex(us => new { us.UserId, us.ExpiresAt })
+            .HasFilter(GetBooleanFilterSql("is_deleted", false) + " AND " + GetBooleanFilterSql("is_revoked", false))
+            .HasDatabaseName("ix_user_sessions_active_lookup");
 
         // Relationships are already defined in User configuration
     }

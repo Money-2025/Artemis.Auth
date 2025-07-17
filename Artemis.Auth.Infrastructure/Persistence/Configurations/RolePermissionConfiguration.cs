@@ -29,10 +29,10 @@ public class RolePermissionConfiguration : BaseEntityConfiguration<RolePermissio
         builder.HasIndex(rp => new { rp.RoleId, rp.Permission })
             .IsUnique()
             .HasFilter(GetUniqueFilterSql("is_deleted"))
-            .HasDatabaseName("IX_role_permissions_RoleId_Permission");
+            .HasDatabaseName("ix_role_permissions_role_id_permission");
             
         builder.HasIndex(rp => rp.RoleId)
-            .HasDatabaseName("IX_role_permissions_RoleId");
+            .HasDatabaseName("ix_role_permissions_role_id");
 
         // Relationships are already defined in Role configuration
     }

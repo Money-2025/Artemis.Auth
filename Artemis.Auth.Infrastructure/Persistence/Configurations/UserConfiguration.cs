@@ -62,28 +62,28 @@ public class UserConfiguration : BaseEntityConfiguration<User>
         builder.HasIndex(u => u.NormalizedUsername)
             .IsUnique()
             .HasFilter(GetUniqueFilterSql("is_deleted"))
-            .HasDatabaseName("IX_users_NormalizedUsername");
+            .HasDatabaseName("ix_users_normalized_username");
             
         builder.HasIndex(u => u.NormalizedEmail)
             .IsUnique()
             .HasFilter(GetUniqueFilterSql("is_deleted"))
-            .HasDatabaseName("IX_users_NormalizedEmail");
+            .HasDatabaseName("ix_users_normalized_email");
             
         builder.HasIndex(u => u.PhoneNumber)
             .IsUnique()
             .HasFilter(GetBooleanFilterSql("phone_number_confirmed", true) + " AND " + GetBooleanFilterSql("is_deleted", false))
-            .HasDatabaseName("IX_users_PhoneNumber");
+            .HasDatabaseName("ix_users_phone_number");
             
         builder.HasIndex(u => u.LastLoginAt)
-            .HasDatabaseName("IX_users_LastLoginAt");
+            .HasDatabaseName("ix_users_last_login_at");
             
         builder.HasIndex(u => u.LockoutEnd)
-            .HasDatabaseName("IX_users_LockoutEnd");
+            .HasDatabaseName("ix_users_lockout_end");
 
-        // Add performance optimizations
-        builder.AddOptimizedIndexes(_databaseProvider);
-        builder.AddCompositeIndexes(_databaseProvider);
-        builder.AddCoveringIndexes(_databaseProvider);
+        // Note: Advanced performance optimizations can be added later after basic migration works
+        // builder.AddOptimizedIndexes(_databaseProvider);
+        // builder.AddCompositeIndexes(_databaseProvider);
+        // builder.AddCoveringIndexes(_databaseProvider);
 
         // Relationships with optimized delete behavior
         builder.HasMany(u => u.UserRoles)

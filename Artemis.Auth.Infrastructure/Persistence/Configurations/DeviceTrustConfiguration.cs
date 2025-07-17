@@ -32,9 +32,9 @@ public class DeviceTrustConfiguration : BaseEntityConfiguration<DeviceTrust>
 
         // DeviceTrust-specific indexes
         builder.HasIndex(dt => dt.UserId)
-            .HasDatabaseName("IX_device_trusts_UserId");
+            .HasDatabaseName("ix_device_trusts_user_id");
         builder.HasIndex(dt => dt.DeviceName)
-            .HasDatabaseName("IX_device_trusts_DeviceName");
+            .HasDatabaseName("ix_device_trusts_device_name");
 
         // Relationships are already defined in User configuration
     }

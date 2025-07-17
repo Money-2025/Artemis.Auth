@@ -24,7 +24,10 @@ public class UserMfaMethodConfiguration : BaseEntityConfiguration<UserMfaMethod>
             
         builder.Property(umfa => umfa.Type)
             .IsRequired()
-            .HasConversion<string>();
+            .HasConversion(
+                v => v.ToString().ToLowerInvariant(),
+                v => Enum.Parse<MfaMethodType>(v, true))
+            .HasMaxLength(50);
             
         builder.Property(umfa => umfa.SecretKey)
             .HasMaxLength(500);
@@ -34,7 +37,11 @@ public class UserMfaMethodConfiguration : BaseEntityConfiguration<UserMfaMethod>
 
         // UserMfaMethod-specific indexes
         builder.HasIndex(umfa => umfa.UserId)
-            .HasDatabaseName("IX_user_mfa_methods_UserId");
+            .HasDatabaseName("ix_user_mfa_methods_user_id");
+            
+        builder.HasIndex(umfa => new { umfa.UserId, umfa.Type })
+            .HasFilter(GetBooleanFilterSql("is_deleted", false) + " AND " + GetBooleanFilterSql("is_enabled", true))
+            .HasDatabaseName("ix_user_mfa_methods_user_type_active");
 
         // Relationships are already defined in User configuration
     }

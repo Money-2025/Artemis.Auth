@@ -33,9 +33,9 @@ public class PasswordHistoryConfiguration : BaseEntityConfiguration<PasswordHist
 
         // PasswordHistory-specific indexes
         builder.HasIndex(ph => ph.UserId)
-            .HasDatabaseName("IX_password_history_UserId");
+            .HasDatabaseName("ix_password_history_user_id");
         builder.HasIndex(ph => ph.ChangedAt)
-            .HasDatabaseName("IX_password_history_ChangedAt");
+            .HasDatabaseName("ix_password_history_changed_at");
 
         // Relationships are already defined in User configuration
     }

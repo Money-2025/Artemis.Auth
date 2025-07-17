@@ -21,15 +21,28 @@ public class SecurityPolicyConfiguration : BaseEntityConfiguration<SecurityPolic
         
         builder.Property(sp => sp.PolicyType)
             .IsRequired()
-            .HasConversion<string>();
+            .HasConversion(
+                v => v.ToString().ToLowerInvariant(),
+                v => Enum.Parse<SecurityPolicyType>(v, true))
+            .HasMaxLength(50);
             
         builder.Property(sp => sp.Name)
             .IsRequired()
             .HasMaxLength(256);
             
-        builder.Property(sp => sp.Parameters)
-            .IsRequired()
-            .HasColumnType("jsonb");
+        // Use PostgreSQL-specific JSON type only for PostgreSQL provider
+        if (_databaseProvider == DatabaseProvider.PostgreSQL)
+        {
+            builder.Property(sp => sp.Parameters)
+                .IsRequired()
+                .HasColumnType("jsonb");
+        }
+        else
+        {
+            builder.Property(sp => sp.Parameters)
+                .IsRequired()
+                .HasColumnType("nvarchar(max)");
+        }
             
         builder.Property(sp => sp.ParametersVersion)
             .HasDefaultValue(1);

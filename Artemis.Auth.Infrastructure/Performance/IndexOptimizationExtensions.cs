@@ -34,20 +34,20 @@ public static class IndexOptimizationExtensions
         {
             // Partial index for active users only
             builder.HasIndex("NormalizedUsername")
-                .HasDatabaseName($"IX_{entityName}_NormalizedUsername_Active")
+                .HasDatabaseName($"ix_{entityName.ToLowerInvariant()}_normalized_username_active")
                 .HasFilter("\"is_deleted\" = false")
                 .HasMethod("btree");
                 
             // GIN index for full-text search on email
             builder.HasIndex("NormalizedEmail")
-                .HasDatabaseName($"IX_{entityName}_NormalizedEmail_GIN")
+                .HasDatabaseName($"ix_{entityName.ToLowerInvariant()}_normalized_email_gin")
                 .HasMethod("gin");
         }
         else if (typeof(TEntity).Name == "AuditLog")
         {
             // BRIN index for time-series data
             builder.HasIndex("PerformedAt")
-                .HasDatabaseName($"IX_{entityName}_PerformedAt_BRIN")
+                .HasDatabaseName($"ix_{entityName.ToLowerInvariant()}_performed_at_brin")
                 .HasMethod("brin");
         }
     }
@@ -60,7 +60,7 @@ public static class IndexOptimizationExtensions
         {
             // Filtered index for active users
             builder.HasIndex("NormalizedUsername")
-                .HasDatabaseName($"IX_{entityName}_NormalizedUsername_Active")
+                .HasDatabaseName($"ix_{entityName.ToLowerInvariant()}_normalized_username_active")
                 .HasFilter("[is_deleted] = 0")
                 .IncludeProperties("Email", "PhoneNumber");
         }
@@ -74,7 +74,7 @@ public static class IndexOptimizationExtensions
         {
             // Prefix index for long strings
             builder.HasIndex("NormalizedUsername")
-                .HasDatabaseName($"IX_{entityName}_NormalizedUsername_Prefix");
+                .HasDatabaseName($"ix_{entityName.ToLowerInvariant()}_normalized_username_prefix");
         }
     }
     
@@ -89,26 +89,26 @@ public static class IndexOptimizationExtensions
             case "User":
                 // Composite index for authentication queries
                 builder.HasIndex("NormalizedUsername", "IsDeleted", "LockoutEnd")
-                    .HasDatabaseName($"IX_{entityName}_Auth_Composite")
+                    .HasDatabaseName($"ix_{entityName.ToLowerInvariant()}_auth_composite")
                     .HasFilter(databaseProvider.GetBooleanFilterSql("is_deleted", false));
                 break;
                 
             case "UserSession":
                 // Composite index for session cleanup
                 builder.HasIndex("UserId", "IsRevoked", "ExpiresAt")
-                    .HasDatabaseName($"IX_{entityName}_Cleanup_Composite");
+                    .HasDatabaseName($"ix_{entityName.ToLowerInvariant()}_cleanup_composite");
                 break;
                 
             case "TokenGrant":
                 // Composite index for token validation
                 builder.HasIndex("UserId", "TokenType", "IsUsed", "ExpiresAt")
-                    .HasDatabaseName($"IX_{entityName}_Validation_Composite");
+                    .HasDatabaseName($"ix_{entityName.ToLowerInvariant()}_validation_composite");
                 break;
                 
             case "AuditLog":
                 // Composite index for audit queries
-                builder.HasIndex("EntityType", "EntityId", "PerformedAt")
-                    .HasDatabaseName($"IX_{entityName}_Entity_Audit_Composite");
+                builder.HasIndex("TableName", "RecordId", "PerformedAt")
+                    .HasDatabaseName($"ix_{entityName.ToLowerInvariant()}_entity_audit_composite");
                 break;
         }
     }
@@ -126,14 +126,14 @@ public static class IndexOptimizationExtensions
                 case "User":
                     // Covering index for user lookup
                     builder.HasIndex("NormalizedUsername")
-                        .HasDatabaseName($"IX_{entityName}_Lookup_Covering")
+                        .HasDatabaseName($"ix_{entityName.ToLowerInvariant()}_lookup_covering")
                         .IncludeProperties("Id", "Email", "EmailConfirmed", "PhoneNumber", "TwoFactorEnabled");
                     break;
                     
                 case "UserRole":
                     // Covering index for role authorization
                     builder.HasIndex("UserId")
-                        .HasDatabaseName($"IX_{entityName}_Authorization_Covering")
+                        .HasDatabaseName($"ix_{entityName.ToLowerInvariant()}_authorization_covering")
                         .IncludeProperties("RoleId", "IsDeleted", "AssignedAt");
                     break;
             }

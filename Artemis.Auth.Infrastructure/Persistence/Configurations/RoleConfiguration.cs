@@ -33,7 +33,7 @@ public class RoleConfiguration : BaseEntityConfiguration<Role>
         builder.HasIndex(r => r.NormalizedName)
             .IsUnique()
             .HasFilter(GetUniqueFilterSql("is_deleted"))
-            .HasDatabaseName("IX_roles_NormalizedName");
+            .HasDatabaseName("ix_roles_normalized_name");
 
         // Relationships
         builder.HasMany(r => r.UserRoles)

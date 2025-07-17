@@ -25,11 +25,12 @@ public abstract class BaseEntityConfiguration<TEntity> : IEntityTypeConfiguratio
             .HasDefaultValue(false)
             .IsRequired();
             
-        builder.Property<DateTime?>("DeletedAt")
+        builder.Property(e => e.DeletedAt)
             .IsRequired(false);
-            
-        builder.Property<Guid?>("DeletedBy")
+
+        builder.Property(e => e.DeletedBy)
             .IsRequired(false);
+
             
         builder.Property(e => e.CreatedAt)
             .HasDefaultValueSql(_databaseProvider.GetCurrentTimestampSql())
@@ -54,29 +55,49 @@ public abstract class BaseEntityConfiguration<TEntity> : IEntityTypeConfiguratio
         
         // Add standard indexes for performance
         builder.HasIndex(e => e.IsDeleted)
-            .HasDatabaseName($"IX_{typeof(TEntity).Name}_IsDeleted");
+            .HasDatabaseName($"ix_{typeof(TEntity).Name.ToLowerInvariant()}_is_deleted");
             
         builder.HasIndex(e => e.CreatedAt)
-            .HasDatabaseName($"IX_{typeof(TEntity).Name}_CreatedAt");
+            .HasDatabaseName($"ix_{typeof(TEntity).Name.ToLowerInvariant()}_created_at");
     }
     
-    protected string GetUniqueFilterSql(string columnName)
+    /// <summary>
+    /// Gets SQL filter for non-deleted records using snake_case column naming
+    /// </summary>
+    protected string GetUniqueFilterSql(string snakeCaseColumnName)
     {
-        return _databaseProvider.GetBooleanFilterSql(columnName, false);
+        return _databaseProvider.GetBooleanFilterSql(snakeCaseColumnName, false);
     }
     
-    protected string GetBooleanFilterSql(string columnName, bool value)
+    /// <summary>
+    /// Gets SQL filter for boolean columns using snake_case column naming
+    /// </summary>
+    protected string GetBooleanFilterSql(string snakeCaseColumnName, bool value)
     {
-        return _databaseProvider.GetBooleanFilterSql(columnName, value);
+        return _databaseProvider.GetBooleanFilterSql(snakeCaseColumnName, value);
     }
     
-    protected string QuoteColumn(string columnName)
+    /// <summary>
+    /// Quotes column name according to database provider conventions
+    /// </summary>
+    protected string QuoteColumn(string snakeCaseColumnName)
     {
-        return _databaseProvider.GetColumnQuote(columnName);
+        return _databaseProvider.GetColumnQuote(snakeCaseColumnName);
     }
     
+    /// <summary>
+    /// Gets current timestamp SQL expression for the database provider
+    /// </summary>
     protected string GetCurrentTimestampSql()
     {
         return _databaseProvider.GetCurrentTimestampSql();
+    }
+    
+    /// <summary>
+    /// Converts PascalCase property name to snake_case column name
+    /// </summary>
+    protected string ToSnakeCase(string pascalCase)
+    {
+        return string.Concat(pascalCase.Select((x, i) => i > 0 && char.IsUpper(x) ? "_" + x : x.ToString())).ToLower();
     }
 }
