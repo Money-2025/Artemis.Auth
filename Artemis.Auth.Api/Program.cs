@@ -131,7 +131,6 @@ builder.Services.AddSwaggerConfiguration();
 
 // Custom middleware services
 builder.Services.AddTransient<ErrorHandlingMiddleware>();
-builder.Services.AddTransient<CustomJwtAuthenticationMiddleware>();
 builder.Services.AddTransient<SecurityHeadersMiddleware>();
 builder.Services.AddTransient<RateLimitingMiddleware>();
 
