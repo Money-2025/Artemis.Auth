@@ -1,22 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Artemis.Auth.Domain.Entities;
 using Artemis.Auth.Domain.Enums;
 using Artemis.Auth.Domain.Common;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 
 namespace Artemis.Auth.Infrastructure.Security;
 
 public class AuditInterceptor : SaveChangesInterceptor
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IHttpContextAccessor _http;
     private readonly ILogger<AuditInterceptor> _logger;
-    
-    public AuditInterceptor(IServiceProvider serviceProvider, ILogger<AuditInterceptor> logger)
+
+    public AuditInterceptor(IHttpContextAccessor http, ILogger<AuditInterceptor> logger)
     {
-        _serviceProvider = serviceProvider;
+        _http = http;
         _logger = logger;
     }
     
@@ -63,13 +63,13 @@ public class AuditInterceptor : SaveChangesInterceptor
             }
         }
         
+        // Tek (asıl) SaveChanges çağrısı – ikinci bir Save yok.
         var saveResult = await base.SavingChangesAsync(eventData, result, cancellationToken);
-        
-        // Log audit entries after successful save
-        if (auditEntries.Any())
-        {
-            await LogAuditEntriesAsync(eventData.Context, auditEntries, cancellationToken);
-        }
+
+        // Burada auditEntries'i şu an sadece bellekte tutuyorsun (persist etmiyorsun).
+        // İleride tekrar aktif etmek istersen auditleri aynı transaction'da yazmak için
+        // burada ikinci Save çağrısı yapmadan context'e AddRange edip base'e gitmen gerekir.
+        // Şimdilik sonsuz döngü problemini çözmek adına hiçbir ek işlem yok.
         
         return saveResult;
     }
@@ -78,23 +78,18 @@ public class AuditInterceptor : SaveChangesInterceptor
     {
         try
         {
-            using var scope = _serviceProvider.CreateScope();
-            var httpContextAccessor = scope.ServiceProvider.GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
-            
-            if (httpContextAccessor?.HttpContext?.User?.Identity?.IsAuthenticated == true)
+            var user = _http.HttpContext?.User;
+            if (user?.Identity?.IsAuthenticated == true)
             {
-                var userIdClaim = httpContextAccessor.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
-                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value as string, out var userId))
-                {
+                var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+                if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
                     return userId;
-                }
             }
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to get current user ID for audit logging");
         }
-        
         return null;
     }
     
@@ -132,64 +127,14 @@ public class AuditInterceptor : SaveChangesInterceptor
         
         return changes;
     }
-    
-    private async Task LogAuditEntriesAsync(DbContext context, List<AuditEntry> auditEntries, CancellationToken cancellationToken)
-    {
-        try
-        {
-            foreach (var auditEntry in auditEntries)
-            {
-                var auditLog = new AuditLog
-                {
-                    Id = Guid.NewGuid(),
-                    TableName = auditEntry.EntityType,
-                    RecordId = auditEntry.EntityId.GetValueOrDefault(),
-                    Action = auditEntry.Action,
-                    PerformedBy = auditEntry.UserId,
-                    PerformedAt = auditEntry.Timestamp,
-                    NewData = System.Text.Json.JsonSerializer.Serialize(auditEntry.Changes),
-                    IpAddress = GetClientIpAddress(),
-                    UserAgent = GetUserAgent()
-                };
-                
-                context.Set<AuditLog>().Add(auditLog);
-            }
-            
-            await context.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to log audit entries");
-        }
-    }
-    
+
+    // Şu an kullanılmıyor; audit logları DB'ye yazılmadığı için tutuldu.
+    // Eğer tekrar kullanmak istersen IHttpContextAccessor zaten elimizde.
     private string? GetClientIpAddress()
-    {
-        try
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var httpContextAccessor = scope.ServiceProvider.GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
-            return httpContextAccessor?.HttpContext?.Connection?.RemoteIpAddress?.ToString();
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => _http.HttpContext?.Connection?.RemoteIpAddress?.ToString();
     
     private string? GetUserAgent()
-    {
-        try
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var httpContextAccessor = scope.ServiceProvider.GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
-            return httpContextAccessor?.HttpContext?.Request?.Headers["User-Agent"];
-        }
-        catch
-        {
-            return null;
-        }
-    }
+        => _http.HttpContext?.Request?.Headers["User-Agent"].ToString();
 }
 
 public class AuditEntry

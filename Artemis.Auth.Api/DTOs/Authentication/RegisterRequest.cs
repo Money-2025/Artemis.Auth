@@ -102,6 +102,7 @@ public class RegisterRequest
     /// </summary>
     public string? UserAgent { get; set; }
 
+    /// TODO: we will add source field in the request body of each UI project. For example there will be source = mobile in mobile app. 
     /// <summary>
     /// Registration source (web, mobile, api)
     /// </summary>

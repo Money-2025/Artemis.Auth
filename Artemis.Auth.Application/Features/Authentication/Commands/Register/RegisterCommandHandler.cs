@@ -5,7 +5,6 @@ using Artemis.Auth.Application.Contracts.Persistence;
 using Artemis.Auth.Application.Contracts.Infrastructure;
 using Artemis.Auth.Domain.Entities;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace Artemis.Auth.Application.Features.Authentication.Commands.Register;
 
@@ -50,6 +49,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Re
             // Create new user
             var user = new User
             {
+                Id = Guid.NewGuid(),
                 Username = request.Username,
                 NormalizedUsername = request.Username.ToUpperInvariant(),
                 Email = request.Email,
@@ -59,8 +59,10 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Re
                 PhoneNumberConfirmed = false,
                 TwoFactorEnabled = false,
                 SecurityStamp = GenerateSecurityStamp(),
+                FailedLoginCount = 0,
                 CreatedAt = DateTime.UtcNow,
-                CreatedBy = Guid.Empty // System registration
+                CreatedBy = Guid.Empty, // System registration
+                IsDeleted = false
             };
 
             // Hash password using simple BCrypt-like approach
@@ -112,11 +114,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Re
 
     private static string HashPassword(string password)
     {
-        // Simple SHA256 hash with salt (in production, use BCrypt or similar)
-        using var sha256 = SHA256.Create();
-        var salt = "AuthMicroserviceSalt"; // In production, use random salt per user
-        var saltedPassword = password + salt;
-        var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(saltedPassword));
-        return Convert.ToBase64String(hash);
+        // Use BCrypt for secure password hashing
+        return BCrypt.Net.BCrypt.HashPassword(password);
     }
 }

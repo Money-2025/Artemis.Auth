@@ -7,6 +7,7 @@ using Artemis.Auth.Application.DTOs;
 using Artemis.Auth.Application.Features.Admin.Commands.AssignUserRoles;
 using Artemis.Auth.Application.Features.Admin.Commands.UpdateUser;
 using Artemis.Auth.Application.Features.Authentication.Commands.Login;
+using Artemis.Auth.Application.Features.Auth.Commands.RegisterUser;
 using Artemis.Auth.Application.Features.Users.Commands.UpdateUserProfile;
 using Artemis.Auth.Application.Features.Users.Commands.ChangePassword;
 using Artemis.Auth.Application.Features.Users.Commands.TerminateSession;
@@ -42,6 +43,33 @@ public class ApiMappingProfile : Profile
             .ForMember(dest => dest.DeviceInfo, opt => opt.MapFrom(src => src.DeviceInfo))
             .ForMember(dest => dest.IpAddress, opt => opt.MapFrom(src => src.IpAddress))
             .ForMember(dest => dest.UserAgent, opt => opt.MapFrom(src => src.UserAgent));
+
+        // Register mappings
+        CreateMap<RegisterRequest, RegisterUserCommand>()
+            .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.Username))
+            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+            .ForMember(dest => dest.Password, opt => opt.MapFrom(src => src.Password))
+            .ForMember(dest => dest.ConfirmPassword, opt => opt.MapFrom(src => src.ConfirmPassword))
+            .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.PhoneNumber))
+            .ForMember(dest => dest.FirstName, opt => opt.MapFrom(src => src.FirstName))
+            .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.LastName))
+            .ForMember(dest => dest.AcceptTerms, opt => opt.MapFrom(src => src.AcceptTerms))
+            .ForMember(dest => dest.ClientIpAddress, opt => opt.MapFrom(src => src.IpAddress))
+            .ForMember(dest => dest.UserAgent, opt => opt.MapFrom(src => src.UserAgent));
+
+        // Register response mappings
+        CreateMap<Artemis.Auth.Application.DTOs.UserProfileDto, RegisterResponse>()
+            .ForMember(dest => dest.Success, opt => opt.MapFrom(src => true))
+            .ForMember(dest => dest.RequiresEmailVerification, opt => opt.MapFrom(src => !src.EmailConfirmed))
+            .ForMember(dest => dest.EmailVerificationToken, opt => opt.Ignore()) // Token handled separately
+            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.EmailConfirmed))
+            .ForMember(dest => dest.NextSteps, opt => opt.MapFrom(src => new List<string> 
+            { 
+                !src.EmailConfirmed ? "Check your email for verification link" : "You can now log in",
+                "Complete your profile if needed"
+            }))
+            .ForMember(dest => dest.DefaultRole, opt => opt.MapFrom(src => "User"))
+            .ForMember(dest => dest.RegisteredAt, opt => opt.MapFrom(src => src.CreatedAt));
 
         // TODO: Add other authentication mappings as commands are implemented
     }

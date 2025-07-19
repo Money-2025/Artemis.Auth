@@ -7,7 +7,7 @@ using MediatR;
 using Artemis.Auth.Api.DTOs.Authentication;
 using Artemis.Auth.Api.DTOs.Common;
 using Artemis.Auth.Application.Features.Authentication.Commands.Login;
-using Artemis.Auth.Application.Features.Authentication.Commands.Register;
+using Artemis.Auth.Application.Features.Auth.Commands.RegisterUser;
 using Artemis.Auth.Application.Features.Authentication.Commands.RefreshToken;
 using Artemis.Auth.Application.Features.Authentication.Commands.ForgotPassword;
 using Artemis.Auth.Application.Features.Authentication.Commands.ResetPassword;
@@ -145,7 +145,7 @@ public class AuthController : ControllerBase
                 request.Username, request.Email);
 
             // Map to command
-            var command = _mapper.Map<RegisterCommand>(request);
+            var command = _mapper.Map<RegisterUserCommand>(request);
             
             // Execute registration command
             var result = await _mediator.Send(command, cancellationToken);
