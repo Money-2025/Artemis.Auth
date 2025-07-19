@@ -7,11 +7,16 @@ using Artemis.Auth.Application.DTOs;
 using Artemis.Auth.Application.Features.Admin.Commands.AssignUserRoles;
 using Artemis.Auth.Application.Features.Admin.Commands.UpdateUser;
 using Artemis.Auth.Application.Features.Authentication.Commands.Login;
-using Artemis.Auth.Application.Features.Auth.Commands.RegisterUser;
+using Artemis.Auth.Application.Features.Authentication.Commands.RegisterUser;
 using Artemis.Auth.Application.Features.Users.Commands.UpdateUserProfile;
 using Artemis.Auth.Application.Features.Users.Commands.ChangePassword;
 using Artemis.Auth.Application.Features.Users.Commands.TerminateSession;
 using Artemis.Auth.Application.Features.Admin.Queries.GetUsers;
+using Artemis.Auth.Application.Features.Authentication.Commands.ForgotPassword;
+using Artemis.Auth.Application.Features.Authentication.Commands.RefreshToken;
+using Artemis.Auth.Application.Features.Authentication.Commands.ResetPassword;
+using Artemis.Auth.Application.Features.Authentication.Commands.Logout;
+using Artemis.Auth.Application.Features.Authentication.Commands.VerifyEmail;
 using Artemis.Auth.Application.Features.Mfa.Commands.SetupMfa;
 using Artemis.Auth.Application.Features.Mfa.Commands.VerifyMfa;
 using Artemis.Auth.Application.Features.Mfa.Commands.DisableMfa;
@@ -71,7 +76,48 @@ public class ApiMappingProfile : Profile
             .ForMember(dest => dest.DefaultRole, opt => opt.MapFrom(src => "User"))
             .ForMember(dest => dest.RegisteredAt, opt => opt.MapFrom(src => src.CreatedAt));
 
-        // TODO: Add other authentication mappings as commands are implemented
+        // Verify email mappings
+        CreateMap<VerifyEmailRequest, VerifyEmailCommand>()
+            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+            .ForMember(dest => dest.Token, opt => opt.MapFrom(src => src.Token))
+            .ForMember(dest => dest.IpAddress, opt => opt.MapFrom(src => src.IpAddress))
+            .ForMember(dest => dest.UserAgent, opt => opt.MapFrom(src => src.UserAgent));
+
+        CreateMap<VerifyEmailDto, VerifyEmailResponse>()
+            .ForMember(dest => dest.Success, opt => opt.MapFrom(src => src.Success))
+            .ForMember(dest => dest.Message, opt => opt.MapFrom(src => src.Message))
+            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.AccountActivated))
+            .ForMember(dest => dest.VerifiedAt, opt => opt.MapFrom(src => src.VerifiedAt))
+            .ForMember(dest => dest.AutoLogin, opt => opt.MapFrom(src => false))
+            .ForMember(dest => dest.LoginResponse, opt => opt.Ignore());
+
+        // Forgot password mappings
+        CreateMap<ForgotPasswordRequest, ForgotPasswordCommand>()
+            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+            .ForMember(dest => dest.IpAddress, opt => opt.MapFrom(src => src.IpAddress))
+            .ForMember(dest => dest.UserAgent, opt => opt.MapFrom(src => src.UserAgent));
+
+        // Reset password mappings
+        CreateMap<ResetPasswordRequest, ResetPasswordCommand>()
+            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+            .ForMember(dest => dest.Token, opt => opt.MapFrom(src => src.Token))
+            .ForMember(dest => dest.NewPassword, opt => opt.MapFrom(src => src.NewPassword))
+            .ForMember(dest => dest.IpAddress, opt => opt.MapFrom(src => src.IpAddress))
+            .ForMember(dest => dest.UserAgent, opt => opt.MapFrom(src => src.UserAgent));
+
+        // Refresh token mappings
+        CreateMap<RefreshTokenRequest, RefreshTokenCommand>()
+            .ForMember(dest => dest.RefreshToken, opt => opt.MapFrom(src => src.RefreshToken))
+            .ForMember(dest => dest.AccessToken, opt => opt.MapFrom(src => src.AccessToken))
+            .ForMember(dest => dest.IpAddress, opt => opt.MapFrom(src => src.IpAddress))
+            .ForMember(dest => dest.UserAgent, opt => opt.MapFrom(src => src.UserAgent));
+
+        // Logout mappings
+        CreateMap<LogoutRequest, LogoutCommand>()
+            .ForMember(dest => dest.RefreshToken, opt => opt.MapFrom(src => src.RefreshToken))
+            .ForMember(dest => dest.LogoutAllDevices, opt => opt.MapFrom(src => src.LogoutFromAllDevices))
+            .ForMember(dest => dest.IpAddress, opt => opt.MapFrom(src => src.IpAddress))
+            .ForMember(dest => dest.UserAgent, opt => opt.MapFrom(src => src.UserAgent));
     }
 
     /// <summary>
