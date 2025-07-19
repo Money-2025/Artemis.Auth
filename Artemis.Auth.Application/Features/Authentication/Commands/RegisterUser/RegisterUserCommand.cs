@@ -2,7 +2,7 @@ using MediatR;
 using Artemis.Auth.Application.DTOs;
 using Artemis.Auth.Application.Common.Wrappers;
 
-namespace Artemis.Auth.Application.Features.Auth.Commands.RegisterUser;
+namespace Artemis.Auth.Application.Features.Authentication.Commands.RegisterUser;
 
 public class RegisterUserCommand : IRequest<Result<UserProfileDto>>
 {
@@ -16,4 +16,5 @@ public class RegisterUserCommand : IRequest<Result<UserProfileDto>>
     public bool AcceptTerms { get; set; }
     public string? ClientIpAddress { get; set; }
     public string? UserAgent { get; set; }
+    public string? ApplicationUrl { get; set; }
 }

@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using Artemis.Auth.Application.Common.Wrappers;
 using Artemis.Auth.Application.Contracts.Persistence;
+using Artemis.Auth.Application.Contracts.Infrastructure;
 
 namespace Artemis.Auth.Application.Features.Authentication.Commands.VerifyEmail;
 
@@ -9,13 +10,16 @@ public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Res
 {
     private readonly IUserRepository _userRepository;
     private readonly ILogger<VerifyEmailCommandHandler> _logger;
+    private readonly IJwtGenerator _jwtGenerator;
 
     public VerifyEmailCommandHandler(
         IUserRepository userRepository,
-        ILogger<VerifyEmailCommandHandler> logger)
+        ILogger<VerifyEmailCommandHandler> logger,
+        IJwtGenerator jwtGenerator)
     {
         _userRepository = userRepository;
         _logger = logger;
+        _jwtGenerator = jwtGenerator;
     }
 
     public async Task<Result<VerifyEmailDto>> Handle(VerifyEmailCommand request, CancellationToken cancellationToken)
@@ -44,14 +48,37 @@ public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Res
                 return Result<VerifyEmailDto>.Success(alreadyVerifiedResult, "Email already verified");
             }
 
-            // Validate verification token (in a real implementation, you'd validate against stored token)
-            if (string.IsNullOrEmpty(request.Token) || request.Token.Length < 32)
+            // Validate JWT confirmation token
+            try
             {
+                var isTokenValid = await _jwtGenerator.ValidateTokenAsync(request.Token, "confirmation");
+                if (!isTokenValid)
+                {
+                    _logger.LogWarning("Invalid confirmation token for user: {Email}", request.Email);
+                    return Result<VerifyEmailDto>.Failure("Invalid or expired verification token");
+                }
+
+                // Verify the token belongs to this user
+                var tokenUserId = await _jwtGenerator.GetUserIdFromTokenAsync(request.Token);
+                if (tokenUserId != user.Id)
+                {
+                    _logger.LogWarning("Token user ID mismatch for email: {Email}", request.Email);
+                    return Result<VerifyEmailDto>.Failure("Invalid verification token");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating confirmation token for user: {Email}", request.Email);
                 return Result<VerifyEmailDto>.Failure("Invalid verification token");
             }
 
-            // Update email confirmation status
+            // Update email confirmation status and regenerate security stamp to invalidate existing tokens
             await _userRepository.UpdateEmailConfirmationAsync(user.Id, true, cancellationToken);
+            
+            // Regenerate security stamp to invalidate all existing tokens for this user
+            await _userRepository.UpdateSecurityStampAsync(user.Id, cancellationToken);
+            
+            _logger.LogInformation("Email verified and security stamp updated for user: {Email}", request.Email);
 
             var result = new VerifyEmailDto
             {

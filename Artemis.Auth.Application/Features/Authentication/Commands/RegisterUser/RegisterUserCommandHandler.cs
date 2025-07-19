@@ -9,7 +9,7 @@ using Artemis.Auth.Application.Common.Exceptions;
 using Artemis.Auth.Domain.Entities;
 using Artemis.Auth.Domain.Common;
 
-namespace Artemis.Auth.Application.Features.Auth.Commands.RegisterUser;
+namespace Artemis.Auth.Application.Features.Authentication.Commands.RegisterUser;
 
 public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, Result<UserProfileDto>>
 {
@@ -18,7 +18,6 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, R
     private readonly ILogger<RegisterUserCommandHandler> _logger;
     private readonly IEmailSender _emailSender;
     private readonly IJwtGenerator _jwtGenerator;
-
     public RegisterUserCommandHandler(
         IUnitOfWork unitOfWork,
         IMapper mapper,
@@ -99,7 +98,8 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, R
             // Send confirmation email
             try
             {
-                var confirmationLink = $"https://your-app.com/confirm-email?token={confirmationToken}";
+                var applicationUrl = request.ApplicationUrl ?? "https://localhost:7109";
+                var confirmationLink = $"{applicationUrl}/confirm-email?token={confirmationToken}";
                 await _emailSender.SendEmailConfirmationAsync(user.Email, user.Username, confirmationLink);
                 _logger.LogInformation("Confirmation email sent to {Email} for user {Username}", user.Email, user.Username);
             }

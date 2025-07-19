@@ -2,7 +2,7 @@ using FluentValidation;
 using Artemis.Auth.Application.Contracts.Persistence;
 using Artemis.Auth.Domain.Common;
 
-namespace Artemis.Auth.Application.Features.Auth.Commands.RegisterUser;
+namespace Artemis.Auth.Application.Features.Authentication.Commands.RegisterUser;
 
 public class RegisterUserCommandValidator : AbstractValidator<RegisterUserCommand>
 {
