@@ -7,12 +7,13 @@ using MediatR;
 using Artemis.Auth.Api.DTOs.Authentication;
 using Artemis.Auth.Api.DTOs.Common;
 using Artemis.Auth.Application.Features.Authentication.Commands.Login;
-using Artemis.Auth.Application.Features.Auth.Commands.RegisterUser;
+using Artemis.Auth.Application.Features.Authentication.Commands.RegisterUser;
 using Artemis.Auth.Application.Features.Authentication.Commands.RefreshToken;
 using Artemis.Auth.Application.Features.Authentication.Commands.ForgotPassword;
 using Artemis.Auth.Application.Features.Authentication.Commands.ResetPassword;
 using Artemis.Auth.Application.Features.Authentication.Commands.VerifyEmail;
 using Artemis.Auth.Application.Features.Authentication.Commands.Logout;
+using Artemis.Auth.Application.Features.Authentication.Commands.ResendVerification;
 
 namespace Artemis.Auth.Api.Controllers;
 
@@ -479,27 +480,39 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> ResendVerificationEmail(
-        [FromBody] string email,
+        [FromBody] ResendVerificationRequest request,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("Resend verification email request for: {Email}", email);
+            _logger.LogInformation("Resend verification email request for: {Email}", request.Email);
 
-            // Always return success for security reasons
+            // Create a resend verification command
+            var command = new ResendVerificationCommand 
+            { 
+                Email = request.Email,
+                IpAddress = GetClientIpAddress(),
+                UserAgent = GetUserAgent()
+            };
+
+            // Execute the command
+            var result = await _mediator.Send(command, cancellationToken);
+
+            // Always return success for security reasons (don't reveal if email exists)
             var response = new
             {
                 Success = true,
-                Message = "If an account with this email exists and is not verified, a verification email has been sent."
+                Message = "If an account with this email exists and is not verified, a verification email has been sent.",
+                EmailSent = result.IsSuccess
             };
 
-            _logger.LogInformation("Resend verification email response sent for: {Email}", email);
+            _logger.LogInformation("Resend verification email response sent for: {Email}", request.Email);
 
             return Ok(ApiResponse.SuccessResponse(response.Message));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during resend verification email for: {Email}", email);
+            _logger.LogError(ex, "Error during resend verification email for: {Email}", request.Email);
             return StatusCode(500, ErrorResponse.InternalServerError("Resend verification failed", HttpContext.TraceIdentifier));
         }
     }
