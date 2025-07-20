@@ -342,7 +342,7 @@ public class EmailService : IEmailSender
     /// Used for immediate sending or when queue is disabled
     /// Implements connection pooling and retry logic
     /// </summary>
-    private async Task<bool> SendEmailDirectlyAsync(string to, string subject, string body, bool isHtml)
+    internal async Task<bool> SendEmailDirectlyAsync(string to, string subject, string body, bool isHtml)
     {
         try
         {

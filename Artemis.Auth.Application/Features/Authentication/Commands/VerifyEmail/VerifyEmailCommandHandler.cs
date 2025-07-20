@@ -1,23 +1,26 @@
+using System.Security.Claims;
+using Artemis.Auth.Application.Common.Wrappers;
+using Artemis.Auth.Application.Contracts.Infrastructure;
+using Artemis.Auth.Application.Contracts.Persistence;
+using Artemis.Auth.Application.Features.Authentication.Commands.VerifyEmail;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using Artemis.Auth.Application.Common.Wrappers;
-using Artemis.Auth.Application.Contracts.Persistence;
-using Artemis.Auth.Application.Contracts.Infrastructure;
-
-namespace Artemis.Auth.Application.Features.Authentication.Commands.VerifyEmail;
 
 public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Result<VerifyEmailDto>>
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<VerifyEmailCommandHandler> _logger;
     private readonly IJwtGenerator _jwtGenerator;
 
     public VerifyEmailCommandHandler(
         IUserRepository userRepository,
+        IUnitOfWork unitOfWork,
         ILogger<VerifyEmailCommandHandler> logger,
         IJwtGenerator jwtGenerator)
     {
         _userRepository = userRepository;
+        _unitOfWork = unitOfWork;
         _logger = logger;
         _jwtGenerator = jwtGenerator;
     }
@@ -26,76 +29,95 @@ public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Res
     {
         try
         {
-            // Get user by email
-            var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
-            if (user == null)
+            // 1. Token validate & principal al
+            var (isValid, principal, error) = await _jwtGenerator
+                .ValidateAndGetPrincipalAsync(request.Token, "confirmation");
+
+            if (!isValid || principal == null)
             {
-                return Result<VerifyEmailDto>.Failure("Invalid verification token or email");
+                _logger.LogWarning("Email verification failed: {Reason}", error);
+                return Result<VerifyEmailDto>.Failure(error ?? "Invalid or expired verification token");
             }
 
-            // Check if email is already verified
+            // 2. UserId claim
+            var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)
+                              ?? principal.FindFirst("sub");
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                _logger.LogWarning("Email verification failed: missing or invalid user id claim");
+                return Result<VerifyEmailDto>.Failure("Invalid verification token");
+            }
+
+            // 3. Security stamp claim (opsiyonel ama önerilir)
+            var stampClaim = principal.FindFirst("artemis:security_stamp")?.Value;
+
+            // 4. Email claim (isteğe bağlı doğrulama)
+            var emailClaim = principal.FindFirst("artemis:email")?.Value;
+
+            // 5. User fetch
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                _logger.LogWarning("Email verification failed: user not found (ID: {UserId})", userId);
+                return Result<VerifyEmailDto>.Failure("Invalid verification token");
+            }
+
+            // 6. Security stamp mismatch
+            if (!string.IsNullOrEmpty(stampClaim) &&
+                !string.Equals(stampClaim, user.SecurityStamp, StringComparison.Ordinal))
+            {
+                _logger.LogWarning("Email verification failed: security stamp mismatch for user {UserId}", userId);
+                return Result<VerifyEmailDto>.Failure("Invalid or expired verification token");
+            }
+
+            // 7. (Opsiyonel) token email claim DB ile uyumlu mu?
+            if (!string.IsNullOrEmpty(emailClaim) &&
+                !string.Equals(emailClaim, user.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Email verification failed: email claim mismatch for user {UserId}", userId);
+                return Result<VerifyEmailDto>.Failure("Invalid verification token");
+            }
+
+            // 8. Already verified?
             if (user.EmailConfirmed)
             {
-                var alreadyVerifiedResult = new VerifyEmailDto
+                var already = new VerifyEmailDto
                 {
-                    Email = request.Email,
+                    Email = user.Email,
                     Message = "Email address is already verified",
                     VerifiedAt = DateTime.UtcNow,
                     Success = true,
                     AccountActivated = true
                 };
-
-                return Result<VerifyEmailDto>.Success(alreadyVerifiedResult, "Email already verified");
+                return Result<VerifyEmailDto>.Success(already, "Email already verified");
             }
 
-            // Validate JWT confirmation token
-            try
-            {
-                var isTokenValid = await _jwtGenerator.ValidateTokenAsync(request.Token, "confirmation");
-                if (!isTokenValid)
-                {
-                    _logger.LogWarning("Invalid confirmation token for user: {Email}", request.Email);
-                    return Result<VerifyEmailDto>.Failure("Invalid or expired verification token");
-                }
+            // 9. Update user object directly (no redundant DB calls)
+            user.EmailConfirmed = true;
+            user.SecurityStamp = Guid.NewGuid().ToString();
 
-                // Verify the token belongs to this user
-                var tokenUserId = await _jwtGenerator.GetUserIdFromTokenAsync(request.Token);
-                if (tokenUserId != user.Id)
-                {
-                    _logger.LogWarning("Token user ID mismatch for email: {Email}", request.Email);
-                    return Result<VerifyEmailDto>.Failure("Invalid verification token");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error validating confirmation token for user: {Email}", request.Email);
-                return Result<VerifyEmailDto>.Failure("Invalid verification token");
-            }
+            // 10. Update entity in repository to enable change tracking
+            await _userRepository.UpdateAsync(user, cancellationToken);
 
-            // Update email confirmation status and regenerate security stamp to invalidate existing tokens
-            await _userRepository.UpdateEmailConfirmationAsync(user.Id, true, cancellationToken);
-            
-            // Regenerate security stamp to invalidate all existing tokens for this user
-            await _userRepository.UpdateSecurityStampAsync(user.Id, cancellationToken);
-            
-            _logger.LogInformation("Email verified and security stamp updated for user: {Email}", request.Email);
+            // 11. Save all changes to database
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            var result = new VerifyEmailDto
+            _logger.LogInformation("Email verified and security stamp updated for user {UserId}", userId);
+
+            var dto = new VerifyEmailDto
             {
-                Email = request.Email,
+                Email = user.Email,
                 Message = "Email address has been verified successfully. Your account is now active.",
                 VerifiedAt = DateTime.UtcNow,
                 Success = true,
                 AccountActivated = true
             };
 
-            _logger.LogInformation("Email verified successfully for user: {Email}", request.Email);
-
-            return Result<VerifyEmailDto>.Success(result, "Email verified successfully");
+            return Result<VerifyEmailDto>.Success(dto, "Email verified successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during email verification for {Email}", request.Email);
+            _logger.LogError(ex, "Error during email verification (token processing)");
             return Result<VerifyEmailDto>.Failure("Email verification failed. Please try again.");
         }
     }

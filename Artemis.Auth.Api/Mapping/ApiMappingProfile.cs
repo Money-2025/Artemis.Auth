@@ -78,7 +78,6 @@ public class ApiMappingProfile : Profile
 
         // Verify email mappings
         CreateMap<VerifyEmailRequest, VerifyEmailCommand>()
-            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
             .ForMember(dest => dest.Token, opt => opt.MapFrom(src => src.Token))
             .ForMember(dest => dest.IpAddress, opt => opt.MapFrom(src => src.IpAddress))
             .ForMember(dest => dest.UserAgent, opt => opt.MapFrom(src => src.UserAgent));

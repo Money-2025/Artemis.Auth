@@ -92,7 +92,7 @@ public class EmailBackgroundService : BackgroundService
         {
             // Process queued emails
             var processedCount = await emailQueueService.ProcessQueueAsync(
-                (to, subject, body, isHtml) => SendEmailWithRetryAsync(emailService, to, subject, body, isHtml));
+                (to, subject, body, isHtml) => emailService.SendEmailDirectlyAsync(to, subject, body, isHtml));
 
             // Log queue statistics periodically
             if (processedCount > 0)
@@ -113,38 +113,6 @@ public class EmailBackgroundService : BackgroundService
         }
     }
 
-    /// <summary>
-    /// Sends email with retry logic for the queue processor
-    /// Wraps direct email sending with additional error handling
-    /// Returns success/failure status for queue management
-    /// </summary>
-    private async Task<bool> SendEmailWithRetryAsync(EmailService emailService, string to, string subject, string body, bool isHtml)
-    {
-        try
-        {
-            // Use reflection to call the private SendEmailDirectlyAsync method
-            // This is needed because the queue processor needs direct access to sending
-            var method = typeof(EmailService).GetMethod("SendEmailDirectlyAsync", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            
-            if (method != null)
-            {
-                var task = (Task<bool>)method.Invoke(emailService, new object[] { to, subject, body, isHtml })!;
-                return await task;
-            }
-            else
-            {
-                // Fallback to public method if reflection fails
-                await emailService.SendEmailAsync(to, subject, body, isHtml);
-                return true;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error occurred while sending email to {Email}", to);
-            return false;
-        }
-    }
 
     /// <summary>
     /// Handles service stop gracefully

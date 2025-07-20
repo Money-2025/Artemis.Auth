@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Artemis.Auth.Domain.Entities;
 
 namespace Artemis.Auth.Application.Contracts.Infrastructure;
@@ -21,4 +22,6 @@ public interface IJwtGenerator
     Task RevokeAllRefreshTokensAsync(Guid userId);
     Task BlacklistTokenAsync(string accessToken);
     Task<TimeSpan> GetTokenRemainingLifetimeAsync(string token);
+    Task<(bool IsValid, ClaimsPrincipal? Principal, string? Error)> ValidateAndGetPrincipalAsync(string token, string expectedPurpose);
+
 }

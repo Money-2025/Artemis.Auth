@@ -1,3 +1,4 @@
+using System.Net;
 using MediatR;
 using AutoMapper;
 using Microsoft.Extensions.Logging;
@@ -98,8 +99,9 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, R
             // Send confirmation email
             try
             {
-                var applicationUrl = request.ApplicationUrl ?? "https://localhost:7109";
-                var confirmationLink = $"{applicationUrl}/confirm-email?token={confirmationToken}";
+                var applicationUrl = request.ApplicationUrl ?? "http://localhost:5190";
+                var encodedToken = WebUtility.UrlEncode(confirmationToken);
+                var confirmationLink = $"{applicationUrl}/api/v1/auth/confirm-email?token={encodedToken}";
                 await _emailSender.SendEmailConfirmationAsync(user.Email, user.Username, confirmationLink);
                 _logger.LogInformation("Confirmation email sent to {Email} for user {Username}", user.Email, user.Username);
             }

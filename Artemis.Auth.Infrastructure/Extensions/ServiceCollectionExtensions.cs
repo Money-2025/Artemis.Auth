@@ -97,7 +97,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<EmailQueueService>();
         services.AddScoped<EmailService>();
         services.AddScoped<IEmailSender, EmailService>();
-        /*services.AddHostedService<EmailBackgroundService>();*/
+        services.AddHostedService<EmailBackgroundService>();
         
         // Infrastructure services
         services.AddScoped<SoftDeleteService>();

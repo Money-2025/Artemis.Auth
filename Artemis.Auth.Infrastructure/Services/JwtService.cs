@@ -589,6 +589,87 @@ public class JwtService : IJwtGenerator
     {
         await RevokeTokenAsync(accessToken);
     }
+    
+    /// <summary>
+    /// Validates token (signature, lifetime, issuer, audience), blacklist status and expected purpose (token_type).
+    /// /// Returns ClaimsPrincipal on success with a structured result tuple.
+    /// </summary>
+    public async Task<(bool IsValid, ClaimsPrincipal? Principal, string? Error)>  ValidateAndGetPrincipalAsync(string token, string expectedPurpose)
+    { 
+        if (string.IsNullOrWhiteSpace(token))
+            return (false, null, "Invalid or expired verification token");
+
+        try
+        {
+            // Blacklist check (raw token)
+            if (await _blacklistService.IsTokenBlacklistedAsync(token))
+            {
+                _logger.LogDebug("Token validation failed: blacklisted");
+                return (false, null, "Invalid or expired verification token");
+            }
+
+            var principal = _tokenHandler.ValidateToken(token, _tokenValidationParameters, out var validatedToken);
+
+            if (validatedToken is not JwtSecurityToken)
+            {
+                _logger.LogDebug("Token validation failed: not a JWT");
+                return (false, null, "Invalid or expired verification token");
+            }
+
+            // Purpose claim (token_type)
+            var purposeClaimType = $"{_jwtConfig.ClaimsPrefix}token_type";
+            var purpose = principal.FindFirst(purposeClaimType)?.Value;
+
+            if (!string.Equals(purpose, expectedPurpose, StringComparison.Ordinal))
+            {
+                _logger.LogDebug("Token validation failed: purpose mismatch expected={Expected} actual={Actual}", expectedPurpose, purpose);
+                return (false, null, "Invalid or expired verification token");
+            }
+
+            // User-level blacklist window
+            var userIdClaim = principal.FindFirst($"{_jwtConfig.ClaimsPrefix}user_id")?.Value;
+            if (Guid.TryParse(userIdClaim, out var userId))
+            {
+                var issuedAtClaim = principal.FindFirst(JwtRegisteredClaimNames.Iat)?.Value;
+                if (long.TryParse(issuedAtClaim, out var issuedAtUnix))
+                {
+                    var issuedAt = DateTimeOffset.FromUnixTimeSeconds(issuedAtUnix).UtcDateTime;
+                    if (await _blacklistService.AreUserTokensBlacklistedAsync(userId, issuedAt))
+                    {
+                        _logger.LogDebug("Token validation failed: user token window blacklisted");
+                        return (false, null, "Invalid or expired verification token");
+                    }
+                }
+            }
+
+            _logger.LogDebug("Token validated successfully for purpose {Purpose}", expectedPurpose);
+            return (true, principal, null);
+        }
+        catch (SecurityTokenExpiredException)
+        {
+            _logger.LogDebug("Token expired"); 
+            return (false, null, "Invalid or expired verification token");
+        }
+        catch (SecurityTokenInvalidSignatureException)
+        {
+            _logger.LogDebug("Token invalid signature");
+            return (false, null, "Invalid or expired verification token");
+        }
+        catch (SecurityTokenValidationException ex)
+        {
+            _logger.LogDebug(ex, "Token validation exception");
+            return (false, null, "Invalid or expired verification token");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error validating token");
+            return (false, null, "Invalid or expired verification token");
+        }
+    }
+
+
+    
+    
 
     /// <summary>
     /// Creates signing credentials based on configuration

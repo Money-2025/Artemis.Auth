@@ -406,6 +406,138 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Handles email confirmation via GET request from email links
+    /// </summary>
+    /// <param name="token">JWT confirmation token from email</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>HTML response with confirmation result</returns>
+    /// <response code="200">Email confirmed successfully</response>
+    /// <response code="400">Invalid or expired token</response>
+    [HttpGet("confirm-email")]
+    [AllowAnonymous]
+    [EnableRateLimiting("VerifyEmailPolicy")]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ConfirmEmail(
+        [FromQuery] string token,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                _logger.LogWarning("Email confirmation attempt with empty token");
+                return BadRequest(GenerateHtmlResponse(false, "Invalid confirmation link",
+                    "The confirmation link is invalid or incomplete."));
+            }
+
+            var command = new VerifyEmailCommand
+            {
+                Token = token,
+                IpAddress = GetClientIpAddress(),
+                UserAgent = GetUserAgent()
+            };
+
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("Email confirmation failed. Reason: {Reason}", result.Message);
+                return BadRequest(GenerateHtmlResponse(false, "Confirmation Failed", result.Message));
+            }
+
+            _logger.LogInformation("Email confirmation successful for {Email}", result.Data?.Email);
+
+            return Ok(GenerateHtmlResponse(true, "Email Confirmed!",
+                "Your email address has been successfully verified. You can now close this window."));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during email confirmation via GET");
+            return StatusCode(500, GenerateHtmlResponse(false, "Error",
+                "An unexpected error occurred while confirming your email."));
+        }
+    }
+
+    /// <summary>
+    /// Generates HTML response for email confirmation
+    /// </summary>
+    /// <param name="success">Whether the operation was successful</param>
+    /// <param name="title">Page title</param>
+    /// <param name="message">Message to display</param>
+    /// <returns>HTML content</returns>
+    private string GenerateHtmlResponse(bool success, string title, string message)
+    {
+        var statusColor = success ? "#28a745" : "#dc3545";
+        var icon = success ? "✅" : "❌";
+
+        return $@"
+<!DOCTYPE html>
+<html lang=""en"">
+<head>
+    <meta charset=""UTF-8"">
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+    <title>{title} - Artemis Auth</title>
+    <style>
+        body {{ 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        .container {{ 
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 400px;
+            margin: 1rem;
+        }}
+        .icon {{ 
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }}
+        .title {{ 
+            color: {statusColor};
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }}
+        .message {{ 
+            color: #666;
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-bottom: 1.5rem;
+        }}
+        .footer {{ 
+            color: #999;
+            font-size: 0.9rem;
+            border-top: 1px solid #eee;
+            padding-top: 1rem;
+            margin-top: 1rem;
+        }}
+    </style>
+</head>
+<body>
+    <div class=""container"">
+        <div class=""icon"">{icon}</div>
+        <h1 class=""title"">{title}</h1>
+        <p class=""message"">{message}</p>
+        <div class=""footer"">
+            <strong>Artemis Auth</strong><br>
+            Secure Authentication Service
+        </div>
+    </div>
+</body>
+</html>";
+    }
+
+    /// <summary>
     /// Logs out user and invalidates tokens
     /// </summary>
     /// <param name="request">Logout request</param>
