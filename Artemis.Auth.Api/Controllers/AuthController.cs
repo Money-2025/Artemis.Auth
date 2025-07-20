@@ -350,62 +350,6 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Verifies user email address
-    /// </summary>
-    /// <param name="request">Email verification request</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Email verification response</returns>
-    /// <response code="200">Email verification successful</response>
-    /// <response code="400">Invalid request data or token</response>
-    /// <response code="429">Rate limit exceeded</response>
-    [HttpPost("verify-email")]
-    [AllowAnonymous]
-    [EnableRateLimiting("VerifyEmailPolicy")]
-    [ProducesResponseType(typeof(ApiResponse<VerifyEmailResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status429TooManyRequests)]
-    public async Task<IActionResult> VerifyEmail(
-        [FromBody] VerifyEmailRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            // Enrich request with client information
-            request.IpAddress = GetClientIpAddress();
-            request.UserAgent = GetUserAgent();
-
-            _logger.LogInformation("Email verification attempt for email: {Email}", request.Email);
-
-            // Map to command
-            var command = _mapper.Map<VerifyEmailCommand>(request);
-            
-            // Execute verify email command
-            var result = await _mediator.Send(command, cancellationToken);
-
-            if (!result.IsSuccess)
-            {
-                _logger.LogWarning("Email verification failed for email: {Email}. Reason: {Reason}", 
-                    request.Email, result.Message);
-
-                return BadRequest(
-                    ErrorResponse.CustomError("EMAIL_VERIFICATION_FAILED", result.Message, 400, HttpContext.TraceIdentifier));
-            }
-
-            // Map to response
-            var response = _mapper.Map<VerifyEmailResponse>(result.Data);
-            
-            _logger.LogInformation("Email verification successful for email: {Email}", request.Email);
-
-            return Ok(ApiResponse<VerifyEmailResponse>.SuccessResponse(response, "Email verification successful"));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error during email verification for email: {Email}", request.Email);
-            return StatusCode(500, ErrorResponse.InternalServerError("Email verification failed", HttpContext.TraceIdentifier));
-        }
-    }
-
-    /// <summary>
     /// Handles email confirmation via GET request from email links
     /// </summary>
     /// <param name="token">JWT confirmation token from email</param>
